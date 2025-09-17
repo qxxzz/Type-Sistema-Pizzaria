@@ -33,6 +33,8 @@ Antes de executar o sistema, é necessário ter instalado em seu computador:
 │  ├─ clientes.csv    # Base de dados dos clientes
 │  ├─ pedidos.csv     # Base de dados dos pedidos
 │  └─ produtos.csv    # Base de dados dos produtos
+├─dist/
+│  └─ index.js
 ├─ node_modules/      # Dependências do projeto
 ├─ src/
 │  └─ index.ts        # Código principal do sistema
