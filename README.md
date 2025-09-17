@@ -12,6 +12,7 @@ Ele possui as principais funcionalidades para uma Pizzaria como exemplo, o ***ge
 Antes de fazer o sistema rodar, é necessario ter instalado em seu computador os seguintes itens:
   - Node.js
   - VSCode
+  - npm
 
 ## 3. Tecnologias Utilizadas 
   - **TypeScript**
@@ -19,8 +20,17 @@ Antes de fazer o sistema rodar, é necessario ter instalado em seu computador os
   - **Git Hub**
 
 ## 4. Estrutura do Projeto
-  - Data
-    - Recibos
-    - clientes.csv
-    - pedidos.csv
-    - produtos.csv
+```bash
+├─ data/
+│  ├─ recibos/        # Pasta onde os recibos de pedidos são gerados
+│  ├─ clientes.csv    # Base de dados dos clientes
+│  ├─ pedidos.csv     # Base de dados dos pedidos
+│  └─ produtos.csv    # Base de dados dos produtos
+├─ node_modules/      # Dependências do projeto
+├─ src/
+│  └─ index.ts        # Código principal do sistema
+├─ package.json       # Dependências e scripts do Node.js
+├─ package-lock.json  # Controle de versões das dependências
+├─ tsconfig.json      # Configuração do TypeScript
+└─ README.md          # Manual de utilização e informações do projeto
+
