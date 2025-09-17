@@ -111,3 +111,20 @@ OU
 node dist/index.js
 ```
 ---
+
+## 8. Build para Produção
+
+Para gerar os arquivos JavaScript prontos para execução sem o `ts-node`:
+
+```bash
+npx tsc
+```
+
+Isso criará os arquivos compilados na pasta `dist/`.
+
+Em seguida, você pode executar diretamente com o Node:
+
+```bash
+node dist/index.js
+```
+ 
