@@ -94,28 +94,55 @@ async function carregarCSVPedidos() {
 
 function menu() {
   console.log('\n=== Sistema Pizzaria ===');
-  console.log('1 - Cadastrar Cliente e Fazer Pedido');
+  console.log('1 - Cadastrar Cliente / Fazer Pedido');
   console.log('2 - Listar Clientes');
   console.log('3 - Cadastrar Produto');
-  console.log('4 - Listar Produtos (Cardápio)');
+  console.log('4 - Listar Produtos');
   console.log('5 - Relatórios de Vendas');
-  console.log('6 - Sair');
-  console.log('7 - Limpeza de Dados (excluir cliente/produto)');
+  console.log('6 - Histórico de Pedidos por Cliente');
+  console.log('7 - Limpeza de Dados');
+  console.log('8 - Sair');
   rl.question('Escolha uma opção: ', (opcao: string) => {
     switch(opcao.trim()) {
-      case '1': cadastrarCliente(); break;
+      case '1': cadastrarOuSelecionarCliente(); break;
       case '2': listarClientes(); break;
       case '3': cadastrarProduto(); break;
-      case '4': listarProdutos(); break;
+      case '4': listarProdutosCardapio(); break;
       case '5': gerarRelatorios(); break;
-      case '6': console.log('Até mais!'); rl.close(); break;
+      case '6': selecionarClienteHistorico(); break;
       case '7': menuLimpeza(); break;
+      case '8': console.log('Até mais!'); rl.close(); break;
       default: console.log('Opção inválida!'); menu();
     }
   });
 }
 
-// -------------------- Sistema --------------------
+// -------------------- Cadastro e Seleção de Cliente --------------------
+
+function cadastrarOuSelecionarCliente() {
+  rl.question('O cliente já está cadastrado? (s/n): ', resposta => {
+    if(resposta.trim().toLowerCase() === 's') {
+      if(clientes.length === 0) {
+        console.log('Nenhum cliente cadastrado ainda.');
+        return cadastrarCliente();
+      }
+      clientes.forEach(c => console.log(`ID: ${c.id} | ${c.nome} | Tel: ${c.telefone}`));
+      rl.question('Digite o ID do cliente: ', id => {
+        const cliente = clientes.find(c => c.id === id.trim());
+        if(!cliente) {
+          console.log('Cliente não encontrado. Tente novamente.');
+          return cadastrarOuSelecionarCliente();
+        }
+        registrarPedido(cliente.id);
+      });
+    } else if(resposta.trim().toLowerCase() === 'n') {
+      cadastrarCliente();
+    } else {
+      console.log('Opção inválida.');
+      cadastrarOuSelecionarCliente();
+    }
+  });
+}
 
 function cadastrarCliente() {
   rl.question('Nome do cliente: ', nome => {
@@ -126,7 +153,7 @@ function cadastrarCliente() {
             const id = (clientes.length + 1).toString();
             clientes.push({ id, nome, telefone, cep, endereco, complemento });
             await salvarCSV(arquivoClientes, clientes, 'id,nome,telefone,cep,endereco,complemento');
-            console.log('✅ Cliente cadastrado com sucesso!');
+            console.log('Cliente cadastrado com sucesso!');
             registrarPedido(id);
           });
         });
@@ -135,46 +162,7 @@ function cadastrarCliente() {
   });
 }
 
-// -------------------- Cardápio Bonito --------------------
-
-function listarProdutos() {
-  if (produtos.length === 0) {
-    console.log('Nenhum produto cadastrado.');
-    return menu();
-  }
-
-  const grupos: Record<string, Produto[]> = {};
-  for (const p of produtos) {
-    if (!grupos[p.tipo]) grupos[p.tipo] = [];
-    grupos[p.tipo].push(p);
-  }
-
-  const icones: Record<string,string> = {
-    pizza: '🍕',
-    refrigerante: '🥤',
-    sobremesa: '🍰',
-    outro: '🛍️'
-  };
-
-  console.log('\n========== CARDÁPIO ==========');
-  Object.entries(grupos).forEach(([tipo, lista]) => {
-    const emoji = icones[tipo] || '🍽️';
-    console.log(`\n${emoji} ${tipo.toUpperCase()} ` + '-'.repeat(25 - tipo.length));
-    console.log('ID'.padEnd(5) + 'Nome'.padEnd(25) + 'Preço'.padStart(10));
-    console.log('-'.repeat(42));
-    lista.forEach(p => {
-      console.log(
-        p.id.padEnd(5) +
-        p.nome.padEnd(25) +
-        `R$ ${p.preco.toFixed(2)}`.padStart(10)
-      );
-    });
-  });
-  console.log('==============================\n');
-  menu();
-}
-
-// -------------------- Cadastro de Produto --------------------
+// -------------------- Cadastro de Produtos --------------------
 
 function cadastrarProduto() {
   rl.question('Nome do produto: ', nome => {
@@ -225,11 +213,34 @@ function cadastrarProduto() {
   });
 }
 
-// -------------------- Listar Clientes --------------------
+// -------------------- Listar Produtos / Cardápio --------------------
 
-function listarClientes() {
-  if(clientes.length === 0) console.log('Nenhum cliente cadastrado.');
-  else clientes.forEach(c => console.log(`ID: ${c.id} | ${c.nome} | Tel: ${c.telefone}`));
+function listarProdutosCardapio() {
+  if (produtos.length === 0) {
+    console.log('Nenhum produto cadastrado.');
+    return menu();
+  }
+
+  const grupos: Record<string, Produto[]> = {};
+  for (const p of produtos) {
+    if (!grupos[p.tipo]) grupos[p.tipo] = [];
+    grupos[p.tipo].push(p);
+  }
+
+  console.log('\n========== CARDÁPIO ==========');
+  Object.entries(grupos).forEach(([tipo, lista]) => {
+    console.log(`\n🍕 ${tipo.toUpperCase()} ` + '-'.repeat(25 - tipo.length));
+    console.log('ID'.padEnd(5) + 'Nome'.padEnd(25) + 'Preço'.padStart(10));
+    console.log('-'.repeat(42));
+    lista.forEach(p => {
+      console.log(
+        p.id.padEnd(5) +
+        p.nome.padEnd(25) +
+        `R$ ${p.preco.toFixed(2)}`.padStart(10)
+      );
+    });
+  });
+  console.log('==============================\n');
   menu();
 }
 
@@ -238,7 +249,7 @@ function listarClientes() {
 function registrarPedido(clienteId: string) {
   const cliente = clientes.find(c => c.id === clienteId);
   if (!cliente) { console.log('Cliente não encontrado.'); return menu(); }
-  if (produtos.length === 0) { console.log('Nenhum produto cadastrado. Cadastre produtos primeiro.'); return menu(); }
+  if (produtos.length === 0) { console.log('Nenhum produto cadastrado.'); return menu(); }
 
   console.log('\nProdutos disponíveis:');
   produtos.forEach(p => console.log(`ID: ${p.id} | ${p.nome} | R$ ${p.preco.toFixed(2)} | Tipo: ${p.tipo}`));
@@ -250,7 +261,12 @@ function registrarPedido(clienteId: string) {
 
     rl.question('Forma de pagamento (Dinheiro / Cartão / Pix): ', pagamento => {
       rl.question('Entrega ou Retirada? ', async entrega => {
-        const total = itens.reduce((sum, p) => sum + p.preco, 0);
+        // Promoção simples: 10% de desconto em pizzas
+        let total = itens.reduce((sum, p) => {
+          if(p.tipo === 'pizza') return sum + p.preco*0.9;
+          return sum + p.preco;
+        }, 0);
+
         const data = new Date().toISOString().slice(0,10);
         const id = (pedidos.length + 1).toString();
         const pedido: Pedido = {
@@ -259,7 +275,7 @@ function registrarPedido(clienteId: string) {
         };
         pedidos.push(pedido);
         await salvarCSV(arquivoPedidos, pedidos, 'id,clienteId,produtoIds,total,data,pagamento,entrega');
-        console.log(`✅ Pedido registrado! Total: R$ ${total.toFixed(2)}`);
+        console.log(`Pedido registrado! Total: R$ ${total.toFixed(2)}`);
 
         await gerarRecibo(pedido);
         console.log(`Recibo gerado em ${pastaRecibos}`);
@@ -285,7 +301,7 @@ async function gerarRecibo(pedido: Pedido) {
     `Forma de pagamento: ${pedido.pagamento}`,
     `Entrega: ${pedido.entrega}`,
     `--- Itens ---`,
-    ...itens.map(i => `${i.nome} - R$ ${i.preco.toFixed(2)}`),
+    ...itens.map(i => `${i.nome} (${i.tipo}) - R$ ${i.preco.toFixed(2)}`),
     `--- Total ---`,
     `R$ ${pedido.total.toFixed(2)}`
   ];
@@ -317,30 +333,69 @@ function gerarRelatorios() {
   Object.entries(vendasPorMes).forEach(([mes, qtd]) => console.log(`${mes}: ${qtd} pedido(s)`));
 
   console.log(`\nTotal de pizzas vendidas: ${totalPizzasVendidas}`);
+  menu();
+}
 
+// -------------------- Histórico de Pedidos --------------------
+
+function listarClientes() {
+  if(clientes.length === 0) {
+    console.log('Nenhum cliente cadastrado.');
+  } else {
+    console.log('\n=== Lista de Clientes ===');
+    clientes.forEach(c => {
+      console.log(`ID: ${c.id} | Nome: ${c.nome} | Telefone: ${c.telefone} | Endereço: ${c.endereco} | CEP: ${c.cep} | Complemento: ${c.complemento}`);
+    });
+    console.log('========================\n');
+  }
+  menu();
+}
+
+function selecionarClienteHistorico() {
+  if(clientes.length === 0) { console.log('Nenhum cliente cadastrado.'); return menu(); }
+  clientes.forEach(c => console.log(`ID: ${c.id} | ${c.nome}`));
+  rl.question('Digite o ID do cliente para ver histórico: ', id => mostrarHistoricoCliente(id.trim()));
+}
+
+function mostrarHistoricoCliente(clienteId: string) {
+  const cliente = clientes.find(c => c.id === clienteId);
+  if (!cliente) { console.log('Cliente não encontrado.'); return menu(); }
+
+  const pedidosCliente = pedidos.filter(p => p.clienteId === clienteId);
+  if (pedidosCliente.length === 0) { 
+    console.log('Nenhum pedido registrado para esse cliente.');
+    return menu();
+  }
+
+  console.log(`\n=== Histórico de Pedidos de ${cliente.nome} ===`);
+  pedidosCliente.forEach(p => {
+    const itens = produtos.filter(pr => p.produtoIds.includes(pr.id));
+    console.log(`Pedido #${p.id} | Data: ${p.data} | Total: R$ ${p.total.toFixed(2)} | Pagamento: ${p.pagamento}`);
+    itens.forEach(i => console.log(`  - ${i.nome} (${i.tipo}) - R$ ${i.preco.toFixed(2)}`));
+  });
+  console.log('==========================================\n');
   menu();
 }
 
 // -------------------- Limpeza de Dados --------------------
 
-async function menuLimpeza() {
-  console.log('\n=== Limpeza de Dados ===');
-  console.log('1 - Excluir Cliente');
+function menuLimpeza() {
+  console.log('\n1 - Excluir Cliente');
   console.log('2 - Excluir Produto');
   console.log('3 - Voltar');
-  rl.question('Escolha uma opção: ', (op: string) => {
-    switch(op.trim()) {
+  rl.question('Escolha uma opção: ', opt => {
+    switch(opt.trim()){
       case '1': excluirCliente(); break;
       case '2': excluirProduto(); break;
       case '3': menu(); break;
-      default: console.log('Opção inválida.'); menuLimpeza();
+      default: console.log('Opção inválida!'); menuLimpeza();
     }
   });
 }
 
 async function excluirCliente() {
   if (clientes.length === 0) { console.log('Nenhum cliente cadastrado.'); return menu(); }
-  clientes.forEach(c => console.log(`ID: ${c.id} | ${c.nome} | Tel: ${c.telefone}`));
+  clientes.forEach(c => console.log(`ID: ${c.id} | ${c.nome}`));
   rl.question('Digite o ID do cliente a excluir: ', async id => {
     const idx = clientes.findIndex(c => c.id === id.trim());
     if (idx === -1) { console.log('Cliente não encontrado.'); return menu(); }
