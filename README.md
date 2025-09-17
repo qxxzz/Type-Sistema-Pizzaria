@@ -1,28 +1,35 @@
-# Sistema de Pizzaria em Typescript
 
-*João Pedro de Andrade Silva - 2508650*
+# Sistema de Pizzaria em TypeScript
 
-*Caio Zanffolim Cunha - 2509832*
+*João Pedro de Andrade Silva – 2508650*
+*Caio Zanffolim Cunha – 2509832*
 
-## 1. Introdução 
-Neste projeto nos fizemos **Sistema de Pizzaria Completo** em **Typescript** com a utilização do **Node.JS**.
-Ele possui as principais funcionalidades para uma Pizzaria como exemplo, o ***gerenciamento de clientes***, ***produtos***, ***pedidos***, ***comprovantes*** e ***relatorio de vendas***.
+## 1. Introdução
+
+Este projeto implementa um **Sistema de Pizzaria completo** em **TypeScript**, utilizando **Node.js**.
+Ele oferece funcionalidades essenciais para o gerenciamento de uma pizzaria, como:
+***cadastro de clientes***, ***produtos***, ***pedidos***, ***emissão de comprovantes*** e ***relatórios de vendas***.
 
 ## 2. Pré-requisitos
-Antes de fazer o sistema rodar, é necessario ter instalado em seu computador os seguintes itens:
-  - Node.js
-  - VSCode
-  - npm
 
-## 3. Tecnologias Utilizadas 
-  - **TypeScript**
-  - **CSV**
-  - **Git Hub**
+Antes de executar o sistema, é necessário ter instalado em seu computador:
+
+* **Node.js**
+* **VS Code** (ou outro editor de sua preferência)
+* **npm** (gerenciador de pacotes do Node.js)
+
+## 3. Tecnologias Utilizadas
+
+* **TypeScript**
+* **Node.js**
+* **CSV**
+* **GitHub**
 
 ## 4. Estrutura do Projeto
+
 ```bash
 ├─ data/
-│  ├─ recibos/        # Pasta onde os recibos de pedidos são gerados
+│  ├─ recibos/        # Recibos de pedidos gerados automaticamente
 │  ├─ clientes.csv    # Base de dados dos clientes
 │  ├─ pedidos.csv     # Base de dados dos pedidos
 │  └─ produtos.csv    # Base de dados dos produtos
@@ -37,24 +44,23 @@ Antes de fazer o sistema rodar, é necessario ter instalado em seu computador os
 
 ## 5. Recursos do Sistema
 
-```bash
-Entrada: Nome, telefone, endereço, complemento, forma de pagamento.
+* **Entrada:** nome, telefone, endereço, complemento e forma de pagamento.
+* **Armazenamento:** `data/clientes.csv`, `data/pedidos.csv`, `data/produtos.csv` e arquivos individuais `data/pedido_*.txt`.
+* **Saída:** data, cliente, telefone, endereço, forma de pagamento, total, entrega e itens do pedido.
+* **Relatórios:** vendas, lista de produtos, lista de clientes e histórico de pedidos por cliente.
+* **Funcionalidade adicional:** criação automática de pastas e arquivos na primeira execução.
 
-Armazenamento: data/clientes.csv, data/pedidos.csv, data/produtos.csv e arquivos individuais data/pedido_*.txt.
+## 6. Instalação
 
-Saída: Data, cliente, telefone, endereço, forma de pagamento, total, entrega, itens.
+Na raiz do projeto, execute:
 
-Relatórios: Vendas, lista de produtos, lista de clientes e histórico de pedidos por cliente.
-
-Funcionalidade adicional: Criação automática de pastas e arquivos na primeira execução.
-```
-6. Instalação
-Na raiz do projeto:
 ```bash
 npm i -D typescript ts-node @types/node
 ```
-Crie (ou confira) os scripts no package.json:
-```bash
+
+Crie ou verifique os scripts em `package.json`:
+
+```json
 {
   "name": "type-sistema-pizzaria",
   "version": "1.0.0",
@@ -74,8 +80,10 @@ Crie (ou confira) os scripts no package.json:
   }
 }
 ```
-tsconfig.json mínimo recomendado:
-```bash
+
+Configuração mínima recomendada para `tsconfig.json`:
+
+```json
 {
   "compilerOptions": {
     "target": "ES2020",
@@ -90,9 +98,11 @@ tsconfig.json mínimo recomendado:
 ```
 
 ## 7. Como executar
-Apenas colocar esse comando no terminal:
+
+No terminal, dentro da pasta raiz do projeto:
+
 ```bash
 npm start
 ```
 
-
+---
