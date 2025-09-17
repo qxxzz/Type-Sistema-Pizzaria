@@ -128,4 +128,16 @@ Em seguida, você pode executar diretamente com o Node:
 ```bash
 node dist/index.js
 ```
+
+## 9. Diagrama 1 do projeto
+
+<img width="1760" height="1360" alt="image" src="https://github.com/user-attachments/assets/e10ada99-537c-4dbb-8ac4-0b6e111f984b" />
+
+## 10. Diagrama 2 do projeto
+
+<img width="1760" height="1360" alt="image" src="https://github.com/user-attachments/assets/beeb61b5-64c3-448d-af15-cfe95060024e" />
+
+
+
+
  
