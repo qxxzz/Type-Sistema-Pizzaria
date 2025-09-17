@@ -104,5 +104,8 @@ No terminal, dentro da pasta raiz do projeto:
 ```bash
 npm start
 ```
-
+OU
+```bash
+node dist/index.js
+```
 ---
