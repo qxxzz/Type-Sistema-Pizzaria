@@ -33,4 +33,19 @@ Antes de fazer o sistema rodar, é necessario ter instalado em seu computador os
 ├─ package-lock.json  # Controle de versões das dependências
 ├─ tsconfig.json      # Configuração do TypeScript
 └─ README.md          # Manual de utilização e informações do projeto
+```
+
+## 5. Recursos do Sistema
+
+```bash
+Entrada: Nome, telefone, endereço, complemento, forma de pagamento.
+
+Armazenamento: data/clientes.csv, data/pedidos.csv, data/produtos.csv e arquivos individuais data/pedido_*.txt.
+
+Saída: Data, cliente, telefone, endereço, forma de pagamento, total, entrega, itens.
+
+Relatórios: Vendas, lista de produtos, lista de clientes e histórico de pedidos por cliente.
+
+Funcionalidade adicional: Criação automática de pastas e arquivos na primeira execução.
+```
 
