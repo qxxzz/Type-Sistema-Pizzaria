@@ -2,7 +2,7 @@
 
 *João Pedro de Andrade Silva - 2508650*
 
-*Caio Zanffolin Cunha - 2509832*
+*Caio Zanffolim Cunha - 2509832*
 
 ## 1. Introdução 
 Neste projeto nos fizemos **Sistema de Pizzaria Completo** em **Typescript** com a utilização do **Node.JS**.
