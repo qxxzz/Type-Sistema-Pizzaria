@@ -15,7 +15,12 @@ Antes de fazer o sistema rodar, é necessario ter instalado em seu computador os
 
 ## 3. Tecnologias Utilizadas 
   - **TypeScript**
-  - **CVS**
+  - **CSV**
   - **Git Hub**
 
 ## 4. Estrutura do Projeto
+  - Data
+    - Recibos
+    - clientes.csv
+    - pedidos.csv
+    - produtos.csv
