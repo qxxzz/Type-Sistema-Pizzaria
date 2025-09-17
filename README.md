@@ -12,6 +12,7 @@ Ele possui as principais funcionalidades para uma Pizzaria como exemplo, o ***ge
 Antes de fazer o sistema rodar, é necessario ter instalado em seu computador os seguintes itens:
   - Node.js
   - VSCode
+  - npm
 
 ## 3. Tecnologias Utilizadas 
   - **TypeScript**
