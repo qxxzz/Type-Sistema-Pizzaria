@@ -48,4 +48,45 @@ Relatórios: Vendas, lista de produtos, lista de clientes e histórico de pedido
 
 Funcionalidade adicional: Criação automática de pastas e arquivos na primeira execução.
 ```
+6. Instalação
+Na raiz do projeto:
+```bash
+npm i -D typescript ts-node @types/node
+```
+Crie (ou confira) os scripts no package.json:
+```bash
+{
+  "name": "type-sistema-pizzaria",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "npx ts-node src/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@types/node": "^24.5.1",
+    "readline-sync": "^1.4.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.2"
+  }
+}
+```
+tsconfig.json mínimo recomendado:
+```bash
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "rootDir": "src",
+    "outDir": "dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  }
+}
+```
+
 
