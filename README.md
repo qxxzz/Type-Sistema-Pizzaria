@@ -89,4 +89,10 @@ tsconfig.json mínimo recomendado:
 }
 ```
 
+## 7. Como executar
+Apenas colocar esse comando no terminal:
+```bash
+npm start
+```
+
 
