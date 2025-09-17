@@ -18,24 +18,4 @@ Antes de fazer o sistema rodar, é necessario ter instalado em seu computador os
   - **CVS**
   - **Git Hub**
 
-sistema-pizzaria-typescript/
-├─ package.json
-├─ tsconfig.json
-├─ README.md
-├─ src/
-│ ├─ index.ts
-│ ├─ server.ts
-│ ├─ db.ts
-│ ├─ models/
-│ │ ├─ types.ts
-│ ├─ routes/
-│ │ ├─ clients.ts
-│ │ ├─ products.ts
-│ │ ├─ orders.ts
-│ │ ├─ reports.ts
-│ ├─ services/
-│ │ ├─ receipt.ts
-│ └─ utils/
-│ ├─ sample-data.ts
-└─ data/
-└─ db.json
+## 4. Estrutura do Projeto
