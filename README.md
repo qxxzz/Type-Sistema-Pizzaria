@@ -2,4 +2,4 @@
 
 ## 1. Introdução 
 Neste projeto nos fizemos **Sistema de Pizzaria Completo** em **Typescript** com a utilização do **Node.JS**.
-Ele possui as principais funcionalidades para uma Pizzaria como exemplo, o **gerenciamento de clientes**, **produtos**, **pedidos**, **comprovantes** e **relatorio de vendas**.
+Ele possui as principais funcionalidades para uma Pizzaria como exemplo, o ***gerenciamento de clientes***, ***produtos***, ***pedidos***, ***comprovantes*** e ***relatorio de vendas***.
