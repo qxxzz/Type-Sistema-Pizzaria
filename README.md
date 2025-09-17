@@ -2,6 +2,7 @@
 # Sistema de Pizzaria em TypeScript
 
 João Pedro de Andrade Silva – 2508650
+
 Caio Zanffolim Cunha – 2509832
 
 ## 1. Introdução
