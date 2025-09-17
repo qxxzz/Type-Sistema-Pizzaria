@@ -1,1 +1,1 @@
-id,clienteId,produtos,pagamento,entrega,data
+id,clienteId,produtoIds,total,data,pagamento,entrega
