@@ -167,14 +167,14 @@ function cadastrarCliente() {
 function cadastrarProduto() {
   rl.question('Nome do produto: ', nome => {
     if(!nome.trim()){
-      console.log('❌ Nome não pode ficar vazio.');
+      console.log(' Nome não pode ficar vazio.');
       return menu();
     }
 
     rl.question('Preço (ex: 29.90): ', precoStr => {
       const preco = parseFloat(precoStr);
       if(isNaN(preco) || preco <= 0) {
-        console.log('❌ Preço inválido. Digite um número positivo.');
+        console.log(' Preço inválido. Digite um número positivo.');
         return menu();
       }
 
@@ -193,7 +193,7 @@ function cadastrarProduto() {
         };
         const tipo = mapaTipos[tipoOpc.trim()];
         if(!tipo){
-          console.log('❌ Tipo inválido.');
+          console.log(' Tipo inválido.');
           return menu();
         }
 
@@ -206,7 +206,7 @@ function cadastrarProduto() {
 
         produtos.push(produto);
         await salvarCSV(arquivoProdutos, produtos, 'id,nome,preco,tipo');
-        console.log(`✅ Produto "${produto.nome}" (${produto.tipo}) cadastrado com sucesso!`);
+        console.log(` Produto "${produto.nome}" (${produto.tipo}) cadastrado com sucesso!`);
         menu();
       });
     });
@@ -406,7 +406,7 @@ async function excluirCliente() {
     pedidos = pedidos.filter(p => p.clienteId !== id.trim());
     await salvarCSV(arquivoPedidos, pedidos, 'id,clienteId,produtoIds,total,data,pagamento,entrega');
 
-    console.log('✅ Cliente e pedidos associados excluídos.');
+    console.log(' Cliente e pedidos associados excluídos.');
     menu();
   });
 }
@@ -428,7 +428,7 @@ async function excluirProduto() {
     });
     await salvarCSV(arquivoPedidos, pedidos, 'id,clienteId,produtoIds,total,data,pagamento,entrega');
 
-    console.log('✅ Produto removido. Pedidos atualizados.');
+    console.log(' Produto removido. Pedidos atualizados.');
     menu();
   });
 }
@@ -441,3 +441,4 @@ async function excluirProduto() {
   await carregarCSVPedidos();
   menu();
 })();
+
