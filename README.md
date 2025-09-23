@@ -66,8 +66,6 @@ Para instalar e configurar o projeto corretamente, execute os seguintes comandos
 | `npm i -D typescript ts-node @types/node` | Instale os tipos do Node e ajuste o `tsconfig` na raiz |
 | `cd ts` | Acessar diretório `ts` |
 | `touch index.ts` | Criar o arquivo `index.ts` |
-| *(Digite o código do `tsconfig.json`)* | Salve o projeto |
-| *(Digite o código)* | Tudo em um arquivo único |
 | `tsc index.ts` | Transpile o `index.ts` para `index.js` |
 
 
