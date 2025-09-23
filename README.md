@@ -69,6 +69,7 @@ Para instalar e configurar o projeto corretamente, execute os seguintes comandos
 | `touch clientes.csv` | Criar o arquivo `clientes.csv` |
 | `touch pedidos.csv` | Criar o arquivo `pedidos.csv` |
 | `touch produtos.csv` | Criar o arquivo `produtos.csv` |
+| `cd ..` | Sair da pasta |
 | `npm i -g typescript` | Instalar TypeScript |
 | `npx tsc --init` | Criar `tsconfig.json` |
 | `npm i -D typescript ts-node @types/node` | Instale os tipos do Node e ajuste o `tsconfig` na raiz |
