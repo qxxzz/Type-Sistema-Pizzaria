@@ -62,8 +62,6 @@ Para instalar e configurar o projeto corretamente, execute os seguintes comandos
 | Comando | Explicação |
 |---------|------------|
 | `npm i -g typescript` | Instalar TypeScript |
-| `mkdir js` | Criar diretórios |
-| `mkdir ts` | Cria o diretório `ts` |
 | `npx tsc --init` | Criar `tsconfig.json` |
 | `npm i -D typescript ts-node @types/node` | Instale os tipos do Node e ajuste o `tsconfig` na raiz |
 | `cd ts` | Acessar diretório `ts` |
@@ -71,7 +69,7 @@ Para instalar e configurar o projeto corretamente, execute os seguintes comandos
 | *(Digite o código do `tsconfig.json`)* | Salve o projeto |
 | *(Digite o código)* | Tudo em um arquivo único |
 | `tsc index.ts` | Transpile o `index.ts` para `index.js` |
-| `node index.js` | Execute o programa |
+
 
 
 ## 7. Instalação
