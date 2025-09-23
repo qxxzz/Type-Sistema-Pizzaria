@@ -1,80 +1,102 @@
-// importa as bibliotecas necessárias
-import * as readline from 'readline' // para ler e escrever no terminal
-import * as path from 'path'         // pra montar caminho de arquivos de forma segura
-import { promises as fs } from 'fs'  // pra ler e escrever arquivos usando promises
+import * as readline from 'readline'
+import * as path from 'path'
+import { promises as fs } from 'fs'
 
-// --------- Interfaces ---------
-// aqui definimos o "formato" que cada tipo de dado vai ter no programa
-
+// ---------- Interfaces ----------
 interface Cliente {
-  id: string       // id único do cliente
-  nome: string     // nome completo
-  telefone: string // telefone de contato
-  cep: string      // CEP
-  endereco: string // endereço completo
-  complemento: string // complemento tipo apto/bloco
+  id: string
+  nome: string
+  telefone: string
+  cep: string
+  endereco: string
+  complemento: string
 }
 
 interface Produto {
-  id: string       // id do produto
-  nome: string     // nome da pizza ou bebida
-  preco: number    // preço em reais
-  tipo: string     // tipo: pizza, refrigerante, sobremesa ou outro
+  id: string
+  nome: string
+  preco: number
+  tipo: string
 }
 
 interface Pedido {
   id: string
-  clienteId: string       // qual cliente fez
-  produtoIds: string[]    // lista de ids de produtos
-  total: number           // valor total
-  data: string            // data do pedido
-  pagamento: 'Dinheiro' | 'Cartão' | 'Pix' // forma de pagamento
-  entrega: 'Entrega' | 'Retirada'          // se é pra entregar ou se o cliente retira
+  clienteId: string
+  produtoIds: string[]
+  total: number
+  data: string
+  pagamento: 'Dinheiro' | 'Cartão' | 'Pix'
+  entrega: 'Entrega' | 'Retirada'
 }
 
-// caminhos dos arquivos que vão guardar os dados em CSV
+// ---------- Arquivos ----------
 const arquivoClientes = path.join(__dirname, '../data/clientes.csv')
 const arquivoProdutos = path.join(__dirname, '../data/produtos.csv')
-const arquivoPedidos = path.join(__dirname, '../data/pedidos.csv')
-const pastaRecibos   = path.join(__dirname, '../data/recibos')
+const arquivoPedidos  = path.join(__dirname, '../data/pedidos.csv')
+const pastaRecibos    = path.join(__dirname, '../data/recibos')
 
-// listas na memória pra trabalhar com os dados
+// ---------- Listas na memória ----------
 let clientes: Cliente[] = []
 let produtos: Produto[] = []
-let pedidos: Pedido[]  = []
+let pedidos: Pedido[] = []
 
-// readline pra conversar com o usuário no terminal
+// ---------- Interface CLI ----------
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
 })
 
-// --------- Funções pra salvar e carregar CSV ---------
-// essas funções servem pra gravar e ler os arquivos CSV que vão armazenar tudo
-
+// ---------- Funções CSV ----------
 async function salvarCSV<T>(arquivo: string, dados: T[], cabecalho: string) {
   const linhas = dados.map((d: any) => Object.values(d).join(',')).join('\n')
   await fs.writeFile(arquivo, cabecalho + '\n' + linhas, 'utf8')
 }
 
+// carregar clientes
 async function carregarCSVClientes() {
   try {
     const dados = await fs.readFile(arquivoClientes, 'utf8')
     const linhas = dados.trim().split('\n')
-    // pula o cabeçalho e monta os objetos Cliente
     clientes = linhas.slice(1).map(linha => {
       const [id, nome, telefone, cep, endereco, complemento] = linha.split(',')
       return { id, nome, telefone, cep, endereco, complemento }
     })
-  } catch {
-    clientes = [] // se o arquivo não existe ainda, começa com lista vazia
-  }
+  } catch { clientes = [] }
 }
 
-// carregarCSVProdutos e carregarCSVPedidos fazem a mesma coisa, só mudam os campos
+// carregar produtos
+async function carregarCSVProdutos() {
+  try {
+    const dados = await fs.readFile(arquivoProdutos, 'utf8')
+    const linhas = dados.trim().split('\n')
+    produtos = linhas.slice(1).map(linha => {
+      const [id, nome, preco, tipo] = linha.split(',')
+      return { id, nome, preco: Number(preco), tipo }
+    })
+  } catch { produtos = [] }
+}
 
-// --------- Menu principal ---------
-// mostra as opções e chama a função certa de acordo com a escolha
+// carregar pedidos
+async function carregarCSVPedidos() {
+  try {
+    const dados = await fs.readFile(arquivoPedidos, 'utf8')
+    const linhas = dados.trim().split('\n')
+    pedidos = linhas.slice(1).map(linha => {
+      const [id, clienteId, produtoIdsStr, total, data, pagamento, entrega] = linha.split(',')
+      return {
+        id,
+        clienteId,
+        produtoIds: produtoIdsStr.split('|'),
+        total: Number(total),
+        data,
+        pagamento: pagamento as 'Dinheiro' | 'Cartão' | 'Pix',
+        entrega: entrega as 'Entrega' | 'Retirada'
+      }
+    })
+  } catch { pedidos = [] }
+}
+
+// ---------- Menu ----------
 function menu() {
   console.log('\n=== Sistema Pizzaria ===')
   console.log('1 - Cadastrar Cliente / Fazer Pedido')
@@ -85,59 +107,54 @@ function menu() {
   console.log('6 - Histórico de Pedidos por Cliente')
   console.log('7 - Limpeza de Dados')
   console.log('8 - Sair')
-  rl.question('Escolha uma opção: ', (opcao: string) => {
+  rl.question('Escolha uma opção: ', opcao => {
     switch(opcao.trim()) {
       case '1': cadastrarOuSelecionarCliente(); break
       case '2': listarClientes(); break
-      // ... outras opções
+      case '3': cadastrarProduto(); break
+      case '4': listarProdutosCardapio(); break
+      case '5': gerarRelatorios(); break
+      case '6': selecionarClienteHistorico(); break
+      case '7': menuLimpeza(); break
       case '8': console.log('Até mais!'); rl.close(); break
       default: console.log('Opção inválida!'); menu()
     }
   })
 }
 
-// --------- Cadastro de Cliente ---------
-// pergunta se já existe cliente e se não existir cadastra um novo
-function cadastrarOuSelecionarCliente() { /* ... */ }
-function cadastrarCliente() { /* ... */ }
+// ---------- Cadastro/Seleção Cliente ----------
+function cadastrarOuSelecionarCliente() { /* igual ao seu código original */ }
+function cadastrarCliente() { /* igual ao seu código original */ }
 
-// --------- Cadastro de Produto ---------
-// pede nome, preço e tipo e salva no CSV
-function cadastrarProduto() { /* ... */ }
+// ---------- Cadastro Produto ----------
+function cadastrarProduto() { /* igual ao seu código original */ }
 
-// --------- Listar Produtos ---------
-// agrupa por tipo e mostra no formato de cardápio
-function listarProdutosCardapio() { /* ... */ }
+// ---------- Listar Produtos ----------
+function listarProdutosCardapio() { /* igual ao seu código original */ }
 
-// --------- Registrar Pedido ---------
-// pega cliente e produtos escolhidos, calcula total e aplica 10% de desconto em pizzas
-function registrarPedido(clienteId: string) { /* ... */ }
+// ---------- Registrar Pedido ----------
+function registrarPedido(clienteId: string) { /* igual ao seu código original */ }
 
-// --------- Gerar Recibo ---------
-// cria um arquivo .txt com os dados do pedido
-async function gerarRecibo(pedido: Pedido) { /* ... */ }
+// ---------- Gerar Recibo ----------
+async function gerarRecibo(pedido: Pedido) { /* igual ao seu código original */ }
 
-// --------- Relatórios ---------
-// mostra quantos pedidos foram feitos por dia/mês e total de pizzas vendidas
-function gerarRelatorios() { /* ... */ }
+// ---------- Relatórios ----------
+function gerarRelatorios() { /* igual ao seu código original */ }
 
-// --------- Histórico de Pedidos ---------
-// lista os pedidos que um cliente já fez
-function listarClientes() { /* ... */ }
-function selecionarClienteHistorico() { /* ... */ }
-function mostrarHistoricoCliente(clienteId: string) { /* ... */ }
+// ---------- Histórico ----------
+function listarClientes() { /* igual ao seu código original */ }
+function selecionarClienteHistorico() { /* igual ao seu código original */ }
+function mostrarHistoricoCliente(clienteId: string) { /* igual ao seu código original */ }
 
-// --------- Limpeza de Dados ---------
-// permite excluir clientes ou produtos e atualiza os pedidos
-function menuLimpeza() { /* ... */ }
-async function excluirCliente() { /* ... */ }
-async function excluirProduto() { /* ... */ }
+// ---------- Limpeza ----------
+function menuLimpeza() { /* igual ao seu código original */ }
+async function excluirCliente() { /* igual ao seu código original */ }
+async function excluirProduto() { /* igual ao seu código original */ }
 
-// --------- Inicialização ---------
-// carrega os CSVs (se já existirem) e abre o menu principal
-;(async () => {
+// ---------- Inicialização ----------
+(async () => {
   await carregarCSVClientes()
   await carregarCSVProdutos()
   await carregarCSVPedidos()
   menu()
-})()
+})();
