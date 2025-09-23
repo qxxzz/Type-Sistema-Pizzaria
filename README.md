@@ -61,10 +61,20 @@ Para instalar e configurar o projeto corretamente, execute os seguintes comandos
 
 | Comando | Explicação |
 |---------|------------|
+| `mkdir Type-Sistema-Pizzaria` | Criar pasta |
+| `cd Type-Sistema-Pizzaria` | Entrar na pasta |
+| `mkdir src` | Criar pasta |
+| `mkdir data` | Criar pasta |
+| `cd data` | Entrar na pasta |
+| `touch clientes.csv` | Criar o arquivo `clientes.csv` |
+| `touch pedidos.csv` | Criar o arquivo `pedidos.csv` |
+| `touch produtos.csv` | Criar o arquivo `produtos.csv` |
 | `npm i -g typescript` | Instalar TypeScript |
 | `npx tsc --init` | Criar `tsconfig.json` |
 | `npm i -D typescript ts-node @types/node` | Instale os tipos do Node e ajuste o `tsconfig` na raiz |
+| `cd src` | Criar pasta |
 | `touch index.ts` | Criar o arquivo `index.ts` |
+| `cd ..` | Sair da pasta |
 | `tsc index.ts` | Transpile o `index.ts` para `index.js` |
 
 
