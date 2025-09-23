@@ -53,7 +53,37 @@ Antes de executar o sistema, é necessário ter instalado em seu computador:
 * **Relatórios:** vendas, lista de produtos, lista de clientes e histórico de pedidos por cliente.
 * **Funcionalidade adicional:** criação automática de pastas e arquivos na primeira execução.
 
-## 6. Instalação
+## 6. Comandos de Instalação
+
+Para instalar e configurar o projeto corretamente, execute os seguintes comandos em ordem:
+
+Instalação do TypeScript (global)
+bash
+npm i -g typescript
+Criação da estrutura do projeto
+bash
+mkdir ts
+cd ts
+Inicialização do projeto TypeScript
+bash
+npx tsc --init
+Instalação das dependências de desenvolvimento
+bash
+npm i -D typescript ts-node @types/node
+Criação do arquivo principal
+bash
+touch index.ts
+Compilação do projeto
+bash
+tsc index.ts
+Execução do programa
+bash
+node index.js
+Execução direta com ts-node (desenvolvimento)
+bash
+npx ts-node index.ts
+
+## 7. Instalação
 
 Na raiz do projeto, execute:
 
@@ -100,7 +130,7 @@ Configuração mínima recomendada para `tsconfig.json`:
 }
 ```
 
-## 7. Como executar
+## 8. Como executar
 
 No terminal, dentro da pasta raiz do projeto:
 
@@ -113,7 +143,7 @@ node dist/index.js
 ```
 ---
 
-## 8. Build para Produção
+## 9. Build para Produção
 
 Para gerar os arquivos JavaScript prontos para execução sem o `ts-node`:
 
@@ -129,7 +159,7 @@ Em seguida, você pode executar diretamente com o Node:
 node dist/index.js
 ```
 
-## 9. Diagrama 1 do projeto
+## 10. Diagrama 1 do projeto
 
 <img width="1760" height="1360" alt="image" src="https://github.com/user-attachments/assets/e10ada99-537c-4dbb-8ac4-0b6e111f984b" />
 
