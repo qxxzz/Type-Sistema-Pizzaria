@@ -57,31 +57,27 @@ Antes de executar o sistema, é necessário ter instalado em seu computador:
 
 Para instalar e configurar o projeto corretamente, execute os seguintes comandos em ordem:
 
-Instalação do TypeScript (global)
-bash
-npm i -g typescript
-Criação da estrutura do projeto
-bash
-mkdir ts
-cd ts
-Inicialização do projeto TypeScript
-bash
+# Instalar TypeScript globalmente
+npm install -g typescript
+
+# Criar diretório do projeto e acessá-lo
+mkdir type-sistema-pizzaria
+cd type-sistema-pizzaria
+
+# Inicializar configuração do TypeScript
 npx tsc --init
-Instalação das dependências de desenvolvimento
-bash
-npm i -D typescript ts-node @types/node
-Criação do arquivo principal
-bash
-touch index.ts
-Compilação do projeto
-bash
-tsc index.ts
-Execução do programa
-bash
-node index.js
-Execução direta com ts-node (desenvolvimento)
-bash
-npx ts-node index.ts
+
+# Instalar dependências do projeto
+npm install -D typescript ts-node @types/node
+
+# Criar arquivo principal
+touch src/index.ts
+
+# Compilar o código TypeScript
+npx tsc
+
+# Executar o sistema
+npm start
 
 ## 7. Instalação
 
