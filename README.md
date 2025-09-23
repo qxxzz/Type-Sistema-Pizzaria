@@ -55,7 +55,7 @@ Antes de executar o sistema, é necessário ter instalado em seu computador:
 
 ## 6. Comandos de Instalação
 
-Para instalar e configurar o projeto corretamente, execute os seguintes comandos em ordem:
+Para instalar e configurar o projeto corretamente, execute os seguintes comandos:
 
 ---
 
@@ -64,7 +64,6 @@ Para instalar e configurar o projeto corretamente, execute os seguintes comandos
 | `npm i -g typescript` | Instalar TypeScript |
 | `npx tsc --init` | Criar `tsconfig.json` |
 | `npm i -D typescript ts-node @types/node` | Instale os tipos do Node e ajuste o `tsconfig` na raiz |
-| `cd ts` | Acessar diretório `ts` |
 | `touch index.ts` | Criar o arquivo `index.ts` |
 | `tsc index.ts` | Transpile o `index.ts` para `index.js` |
 
