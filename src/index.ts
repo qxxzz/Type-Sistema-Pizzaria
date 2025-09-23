@@ -421,11 +421,11 @@ async function excluirProduto() {
     produtos.splice(idx,1);
     await salvarCSV(arquivoProdutos, produtos, 'id,nome,preco,tipo');
 
-    // CORREÇÃO APLICADA AQUI - problema de sintaxe na linha abaixo
+    // Problema de sintaxe na linha abaixo
     pedidos.forEach(p => {
       p.produtoIds = p.produtoIds.filter(pid => pid !== id.trim());
       const itens = produtos.filter(pr => p.produtoIds.includes(pr.id));
-      p.total = itens.reduce((s, pr) => s + pr.preco, 0); // CORREÇÃO: fechamento correto do reduce
+      p.total = itens.reduce((s, pr) => s + pr.preco, 0); // Fechamento correto do reduce
     });
     await salvarCSV(arquivoPedidos, pedidos, 'id,clienteId,produtoIds,total,data,pagamento,entrega');
 
@@ -442,3 +442,4 @@ async function excluirProduto() {
   await carregarCSVPedidos();
   menu();
 })();
+
