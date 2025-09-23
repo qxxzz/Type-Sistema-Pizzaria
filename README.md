@@ -57,28 +57,21 @@ Antes de executar o sistema, é necessário ter instalado em seu computador:
 
 Para instalar e configurar o projeto corretamente, execute os seguintes comandos em ordem:
 
-## Instalação
+---
 
-Na raiz do projeto, instale o TypeScript globalmente:
-
-```bash
-npm i -g typescript
-
-mkdir js
-mkdir ts
-
-npx tsc --init
-
-npm i -D typescript ts-node @types/node
-
-cd ts
-touch index.ts
-
-tsc index.ts
-
-node index.js
-
-
+| Comando | Explicação |
+|---------|------------|
+| `npm i -g typescript` | Instalar TypeScript |
+| `mkdir js` | Criar diretórios |
+| `mkdir ts` | Cria o diretório `ts` |
+| `npx tsc --init` | Criar `tsconfig.json` |
+| `npm i -D typescript ts-node @types/node` | Instale os tipos do Node e ajuste o `tsconfig` na raiz |
+| `cd ts` | Acessar diretório `ts` |
+| `touch index.ts` | Criar o arquivo `index.ts` |
+| *(Digite o código do `tsconfig.json`)* | Salve o projeto |
+| *(Digite o código)* | Tudo em um arquivo único |
+| `tsc index.ts` | Transpile o `index.ts` para `index.js` |
+| `node index.js` | Execute o programa |
 
 
 ## 7. Instalação
