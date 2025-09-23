@@ -1,7 +1,9 @@
-import * as readline from 'readline';
-import * as path from 'path';
-import { promises as fs } from 'fs';
+// Importa módulos necessários do Node.js
+import * as readline from 'readline'; // Para entrada/saída via terminal
+import * as path from 'path';         // Para manipulação de caminhos de arquivos
+import { promises as fs } from 'fs';  // Para operações assíncronas com arquivos
 
+// Interface para representar um cliente
 interface Cliente {
   id: string;
   nome: string;
@@ -11,13 +13,15 @@ interface Cliente {
   complemento: string;
 }
 
+// Interface para representar um produto do cardápio
 interface Produto {
   id: string;
   nome: string;
   preco: number;
-  tipo: string; // pizza | refrigerante | sobremesa | outro
+  tipo: string; // Tipos possíveis: pizza | refrigerante | sobremesa | outro
 }
 
+// Interface para representar um pedido realizado
 interface Pedido {
   id: string;
   clienteId: string;
@@ -28,15 +32,18 @@ interface Pedido {
   entrega: 'Entrega' | 'Retirada';
 }
 
+// Caminhos dos arquivos CSV e pasta de recibos
 const arquivoClientes = path.join(__dirname, '../data/clientes.csv');
 const arquivoProdutos = path.join(__dirname, '../data/produtos.csv');
 const arquivoPedidos = path.join(__dirname, '../data/pedidos.csv');
 const pastaRecibos = path.join(__dirname, '../data/recibos');
 
+// Arrays em memória para armazenar os dados
 let clientes: Cliente[] = [];
 let produtos: Produto[] = [];
 let pedidos: Pedido[] = [];
 
+// Interface para leitura de entradas no console
 const rl = readline.createInterface({
   input: process.stdin,
   output: process.stdout
@@ -44,11 +51,13 @@ const rl = readline.createInterface({
 
 // -------------------- Funções CSV --------------------
 
+// Salva dados em formato CSV no arquivo correspondente
 async function salvarCSV<T>(arquivo: string, dados: T[], cabecalho: string) {
   const linhas = dados.map((d: any) => Object.values(d).join(',')).join('\n');
   await fs.writeFile(arquivo, cabecalho + '\n' + linhas, 'utf8');
 }
 
+// Carrega clientes a partir do CSV
 async function carregarCSVClientes() {
   try {
     const dados = await fs.readFile(arquivoClientes, 'utf8');
@@ -57,9 +66,10 @@ async function carregarCSVClientes() {
       const [id, nome, telefone, cep, endereco, complemento] = linha.split(',');
       return { id, nome, telefone, cep, endereco, complemento };
     });
-  } catch { clientes = []; }
+  } catch { clientes = []; } // Caso não exista arquivo ainda
 }
 
+// Carrega produtos a partir do CSV
 async function carregarCSVProdutos() {
   try {
     const dados = await fs.readFile(arquivoProdutos, 'utf8');
@@ -71,6 +81,7 @@ async function carregarCSVProdutos() {
   } catch { produtos = []; }
 }
 
+// Carrega pedidos a partir do CSV
 async function carregarCSVPedidos() {
   try {
     const dados = await fs.readFile(arquivoPedidos, 'utf8');
@@ -92,6 +103,7 @@ async function carregarCSVPedidos() {
 
 // -------------------- Menu --------------------
 
+// Exibe o menu principal do sistema
 function menu() {
   console.log('\n=== Sistema Pizzaria ===');
   console.log('1 - Cadastrar Cliente / Fazer Pedido');
@@ -119,6 +131,7 @@ function menu() {
 
 // -------------------- Cadastro e Seleção de Cliente --------------------
 
+// Pergunta se cliente já está cadastrado e direciona fluxo
 function cadastrarOuSelecionarCliente() {
   rl.question('O cliente já está cadastrado? (s/n): ', resposta => {
     if(resposta.trim().toLowerCase() === 's') {
@@ -144,6 +157,7 @@ function cadastrarOuSelecionarCliente() {
   });
 }
 
+// Cadastro de novo cliente
 function cadastrarCliente() {
   rl.question('Nome do cliente: ', nome => {
     rl.question('Telefone: ', telefone => {
@@ -164,6 +178,7 @@ function cadastrarCliente() {
 
 // -------------------- Cadastro de Produtos --------------------
 
+// Cadastra um novo produto no cardápio
 function cadastrarProduto() {
   rl.question('Nome do produto: ', nome => {
     if(!nome.trim()){
@@ -215,6 +230,7 @@ function cadastrarProduto() {
 
 // -------------------- Listar Produtos / Cardápio --------------------
 
+// Mostra todos os produtos cadastrados agrupados por tipo
 function listarProdutosCardapio() {
   if (produtos.length === 0) {
     console.log('Nenhum produto cadastrado.');
@@ -246,6 +262,7 @@ function listarProdutosCardapio() {
 
 // -------------------- Registrar Pedido --------------------
 
+// Registra um pedido para um cliente
 function registrarPedido(clienteId: string) {
   const cliente = clientes.find(c => c.id === clienteId);
   if (!cliente) { console.log('Cliente não encontrado.'); return menu(); }
@@ -261,7 +278,7 @@ function registrarPedido(clienteId: string) {
 
     rl.question('Forma de pagamento (Dinheiro / Cartão / Pix): ', pagamento => {
       rl.question('Entrega ou Retirada? ', async entrega => {
-        // Promoção simples: 10% de desconto em pizzas
+        // Promoção: pizzas têm 10% de desconto
         let total = itens.reduce((sum, p) => {
           if(p.tipo === 'pizza') return sum + p.preco*0.9;
           return sum + p.preco;
@@ -288,6 +305,7 @@ function registrarPedido(clienteId: string) {
 
 // -------------------- Gerar Recibo --------------------
 
+// Cria um recibo em arquivo .txt com detalhes do pedido
 async function gerarRecibo(pedido: Pedido) {
   try { await fs.mkdir(pastaRecibos, { recursive: true }); } catch {}
   const cliente = clientes.find(c => c.id === pedido.clienteId);
@@ -311,6 +329,7 @@ async function gerarRecibo(pedido: Pedido) {
 
 // -------------------- Relatórios --------------------
 
+// Gera relatórios de vendas por dia, mês e quantidade de pizzas
 function gerarRelatorios() {
   if(pedidos.length === 0) { console.log('Nenhum pedido registrado ainda.'); return menu(); }
   const vendasPorDia: Record<string, number> = {};
@@ -338,6 +357,7 @@ function gerarRelatorios() {
 
 // -------------------- Histórico de Pedidos --------------------
 
+// Lista todos os clientes cadastrados
 function listarClientes() {
   if(clientes.length === 0) {
     console.log('Nenhum cliente cadastrado.');
@@ -351,12 +371,14 @@ function listarClientes() {
   menu();
 }
 
+// Seleciona um cliente para exibir o histórico de pedidos
 function selecionarClienteHistorico() {
   if(clientes.length === 0) { console.log('Nenhum cliente cadastrado.'); return menu(); }
   clientes.forEach(c => console.log(`ID: ${c.id} | ${c.nome}`));
   rl.question('Digite o ID do cliente para ver histórico: ', id => mostrarHistoricoCliente(id.trim()));
 }
 
+// Mostra o histórico de pedidos de um cliente específico
 function mostrarHistoricoCliente(clienteId: string) {
   const cliente = clientes.find(c => c.id === clienteId);
   if (!cliente) { console.log('Cliente não encontrado.'); return menu(); }
@@ -379,6 +401,7 @@ function mostrarHistoricoCliente(clienteId: string) {
 
 // -------------------- Limpeza de Dados --------------------
 
+// Menu para exclusão de clientes ou produtos
 function menuLimpeza() {
   console.log('\n1 - Excluir Cliente');
   console.log('2 - Excluir Produto');
@@ -393,6 +416,7 @@ function menuLimpeza() {
   });
 }
 
+// Exclui cliente e pedidos relacionados
 async function excluirCliente() {
   if (clientes.length === 0) { console.log('Nenhum cliente cadastrado.'); return menu(); }
   clientes.forEach(c => console.log(`ID: ${c.id} | ${c.nome}`));
@@ -411,6 +435,7 @@ async function excluirCliente() {
   });
 }
 
+// Exclui produto e atualiza pedidos relacionados
 async function excluirProduto() {
   if (produtos.length === 0) { console.log('Nenhum produto cadastrado.'); return menu(); }
   produtos.forEach(p => console.log(`ID: ${p.id} | ${p.nome} | R$ ${p.preco.toFixed(2)} | Tipo: ${p.tipo}`));
@@ -424,20 +449,4 @@ async function excluirProduto() {
     pedidos.forEach(p => {
       p.produtoIds = p.produtoIds.filter(pid => pid !== id.trim());
       const itens = produtos.filter(pr => p.produtoIds.includes(pr.id));
-      p.total = itens.reduce((s,pr) => s + pr.preco, 0);
-    });
-    await salvarCSV(arquivoPedidos, pedidos, 'id,clienteId,produtoIds,total,data,pagamento,entrega');
-
-    console.log(' Produto removido. Pedidos atualizados.');
-    menu();
-  });
-}
-
-// -------------------- Inicialização --------------------
-
-(async () => {
-  await carregarCSVClientes();
-  await carregarCSVProdutos();
-  await carregarCSVPedidos();
-  menu();
-})();
+      p.total = itens.reduce((s,pr) =>
