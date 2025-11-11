@@ -1,0 +1,14 @@
+=== Recibo de Pedido #1 ===
+Data: 2025-11-11
+Cliente: BAgriel Bixa
+Telefone: 11 6969696969
+Endereço: Rua Carpa Campo Limpo , 765
+Forma de pagamento: Pix
+Entrega tipo: Retirada
+Status: aberto
+--- Itens ---
+Pizza de Frango com Cream Cheese (G) x1 -> Unit: R$ 110.00 | Total item: R$ 110.00
+--- Subtotal ---
+R$ 110.00
+--- Total ---
+R$ 110.00

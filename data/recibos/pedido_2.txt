@@ -1,0 +1,14 @@
+=== Recibo de Pedido #2 ===
+Data: 2025-11-11
+Cliente: Freitas Homasexual
+Telefone: 11 12345678
+Endereço: Rua Rio de Janeiro , 188
+Forma de pagamento: Pix
+Entrega tipo: Retirada
+Status: aberto
+--- Itens ---
+Pizza de Frango com Cream Cheese (G) x1 -> Unit: R$ 110.00 | Borda: Borda de Cheddar (R$ 30.00) | Total item: R$ 140.00
+--- Subtotal ---
+R$ 140.00
+--- Total ---
+R$ 140.00

@@ -1,21 +1,5 @@
-id,nome,preco,tipo
-1,Pizza de Peixe,120,pizza
-2,Coca-Cola,15,refrigerante
-3,Brigadeiro,7,sobremesa
-4,Batata Frita,25,outro
-5,Pizza Calabresa,80,pizza
-6,Pizza Frango com Catupiry,90,pizza
-7,Pizza Quatro Queijos,95,pizza
-8,Guaraná,12,refrigerante
-9,Fanta Laranja,12,refrigerante
-10,Sorvete de Chocolate,10,sobremesa
-11,Pudim,8,sobremesa
-12,Coxinha,6,outro
-13,Pão de Alho,10,outro
-14,Suco de Laranja,10,refrigerante
-15,Pizza Portuguesa,85,pizza
-16,Refrigerante 2L,20,refrigerante
-17,Churros,9,sobremesa
-18,Nuggets,12,outro
-19,Café Expresso,6,outro
-20,Pizza Vegetariana,88,pizza
+id,nome,tipo,subcategoria,preco,precosPorTamanho
+1,Pizza de Frango com Cream Cheese,pizza,salgada,,"{""P"":45.9,""M"":70.9,""G"":110}"
+2,Milho,adicional,,10.00,
+3,Bacon,adicional,,15.00,
+4,Borda de Cheddar,borda,,30.00,
