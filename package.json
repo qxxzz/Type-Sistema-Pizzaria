@@ -1,18 +1,26 @@
 {
   "name": "type-sistema-pizzaria",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "Sistema de pizzaria feito em TypeScript e SQL Server",
+  "main": "dist/index.js",
   "scripts": {
-    "start": "npx ts-node src/index.ts"
+    "start": "ts-node src/index.ts",
+    "build": "tsc",
+    "dev": "npx ts-node src/index.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "mssql": "^12.1.0",
+    "readline-sync": "^1.4.10"
+  },
   "devDependencies": {
-    "@types/node": "^24.5.1",
-    "readline-sync": "^1.4.10",
+    "@types/mssql": "^9.1.8",
+    "@types/node": "^22.19.1",
+    "@types/readline-sync": "^1.4.8",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.3"
   }
 }

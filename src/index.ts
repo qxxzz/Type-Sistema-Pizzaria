@@ -1,816 +1,639 @@
+
+import * as fs from "fs";
+import * as path from "path";
+import readlineSync from "readline-sync";
+import sql from "mssql";
+import { getConnection } from "./database";
 import * as readline from 'readline';
-import * as path from 'path';
-import { promises as fs } from 'fs';
 
-interface Cliente {
-  id: string;
-  nome: string;
-  telefone: string;
-  cep: string;
-  endereco: string;
-  complemento: string;
-}
 
-type CategoriaProduto = 'pizza' | 'refrigerante' | 'sobremesa' | 'adicional' | 'borda' | 'outro';
-type SubcategoriaPizza = 'salgada' | 'doce' | '';
-
-interface Produto {
-  id: string;
-  nome: string;
-  tipo: CategoriaProduto;
-  subcategoria?: SubcategoriaPizza;
-  preco?: number; // para refrigerante, sobremesa, adicional, borda, outro
-  precosPorTamanho?: { P: number; M: number; G: number }; // para pizza
-}
-
-type StatusPedido = 'aberto' | 'preparando' | 'pronto' | 'entregue' | 'cancelado';
-type FormaPagamento = 'Dinheiro' | 'Cartão' | 'Pix';
-type TipoEntrega = 'Entrega' | 'Retirada';
-
-interface PedidoItem {
-  produtoId: string;
-  quantidade: number;
-  tamanho?: 'P' | 'M' | 'G';
-  bordaId?: string | null;
-  adicionaisIds?: string[];
-  precoUnitario: number; // preço base por unidade (já considerando tamanho)
-  precoAdicionaisUnit?: number; // soma (borda + adicionais) por unidade
-}
-
-interface Pedido {
-  id: string;
-  clienteId: string;
-  itens: PedidoItem[];
-  subtotal: number;
-  taxaEntrega: number;
-  total: number;
-  data: string; // YYYY-MM-DD
-  pagamento: FormaPagamento;
-  entregaTipo: TipoEntrega;
-  status: StatusPedido;
-}
-
-const pastaDados = path.join(__dirname, '../data');
-const arquivoClientes = path.join(pastaDados, 'clientes.csv');
-const arquivoProdutos = path.join(pastaDados, 'produtos.csv');
-const arquivoPedidos = path.join(pastaDados, 'pedidos.csv');
-const pastaRecibos = path.join(pastaDados, 'recibos');
-
-let clientes: Cliente[] = [];
-let produtos: Produto[] = [];
-let pedidos: Pedido[] = [];
-
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
-
-function ask(q: string): Promise<string> {
-  return new Promise(resolve => rl.question(q, ans => resolve(ans)));
-}
-
-/* ------------------ util CSV helpers ------------------ */
-
-async function garantirPastaDados() {
-  try { await fs.mkdir(pastaDados, { recursive: true }); } catch {}
-  try { await fs.mkdir(pastaRecibos, { recursive: true }); } catch {}
-}
-
-function linhaCSVEscape(valor: string) {
-  if (valor == null) return '';
-  const s = String(valor);
-  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
-    return '"' + s.replace(/"/g, '""') + '"';
-  }
-  return s;
-}
-
-function splitCSVLine(line: string): string[] {
-  const res: string[] = [];
-  let cur = '';
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (inQuotes) {
-      if (ch === '"') {
-        if (i + 1 < line.length && line[i + 1] === '"') {
-          cur += '"';
-          i++;
-        } else {
-          inQuotes = false;
-        }
-      } else {
-        cur += ch;
-      }
-    } else {
-      if (ch === ',') {
-        res.push(cur);
-        cur = '';
-      } else if (ch === '"') {
-        inQuotes = true;
-      } else {
-        cur += ch;
-      }
-    }
-  }
-  res.push(cur);
-  return res;
-}
-
-/* ------------------ salvar / carregar CSV ------------------ */
-
-async function salvarClientesCSV() {
-  await garantirPastaDados();
-  const header = ['id','nome','telefone','cep','endereco','complemento'].join(',');
-  const linhas = clientes.map(c => [
-    linhaCSVEscape(c.id),
-    linhaCSVEscape(c.nome),
-    linhaCSVEscape(c.telefone),
-    linhaCSVEscape(c.cep),
-    linhaCSVEscape(c.endereco),
-    linhaCSVEscape(c.complemento)
-  ].join(',')).join('\n');
-  await fs.writeFile(arquivoClientes, header + '\n' + linhas, 'utf8');
-}
-
-async function carregarClientesCSV() {
-  try {
-    const txt = await fs.readFile(arquivoClientes, 'utf8');
-    const linhas = txt.trim().split('\n');
-    clientes = linhas.slice(1).map(l => {
-      const cols = splitCSVLine(l);
-      return {
-        id: cols[0] ?? '',
-        nome: cols[1] ?? '',
-        telefone: cols[2] ?? '',
-        cep: cols[3] ?? '',
-        endereco: cols[4] ?? '',
-        complemento: cols[5] ?? ''
-      } as Cliente;
-    });
-  } catch {
-    clientes = [];
-  }
-}
-
-async function salvarProdutosCSV() {
-  await garantirPastaDados();
-  const header = ['id','nome','tipo','subcategoria','preco','precosPorTamanho'].join(',');
-  const linhas = produtos.map(p => {
-    const preco = p.preco != null ? p.preco.toFixed(2) : '';
-    const precosJson = p.precosPorTamanho ? JSON.stringify(p.precosPorTamanho) : '';
-    return [
-      linhaCSVEscape(p.id),
-      linhaCSVEscape(p.nome),
-      linhaCSVEscape(p.tipo),
-      linhaCSVEscape(p.subcategoria ?? ''),
-      linhaCSVEscape(preco),
-      linhaCSVEscape(precosJson)
-    ].join(',');
-  }).join('\n');
-  await fs.writeFile(arquivoProdutos, header + '\n' + linhas, 'utf8');
-}
-
-async function carregarProdutosCSV() {
-  try {
-    const txt = await fs.readFile(arquivoProdutos, 'utf8');
-    const linhas = txt.trim().split('\n');
-    produtos = linhas.slice(1).map(l => {
-      const cols = splitCSVLine(l);
-      const precosStr = cols[5] ?? '';
-      let precos: {P:number;M:number;G:number} | undefined = undefined;
-      if (precosStr) {
-        try { precos = JSON.parse(precosStr); } catch {}
-      }
-      return {
-        id: cols[0] ?? '',
-        nome: cols[1] ?? '',
-        tipo: (cols[2] ?? 'outro') as CategoriaProduto,
-        subcategoria: (cols[3] ?? '') as SubcategoriaPizza,
-        preco: cols[4] ? parseFloat(cols[4]) : undefined,
-        precosPorTamanho: precos
-      } as Produto;
-    });
-  } catch {
-    produtos = [];
-  }
-}
-
-async function salvarPedidosCSV() {
-  await garantirPastaDados();
-  const header = ['id','clienteId','itensJson','subtotal','taxaEntrega','total','data','pagamento','entrega','status'].join(',');
-  const linhas = pedidos.map(ped => {
-    const itensJson = JSON.stringify(ped.itens);
-    return [
-      linhaCSVEscape(ped.id),
-      linhaCSVEscape(ped.clienteId),
-      linhaCSVEscape(itensJson),
-      linhaCSVEscape(ped.subtotal.toFixed(2)),
-      linhaCSVEscape(ped.taxaEntrega.toFixed(2)),
-      linhaCSVEscape(ped.total.toFixed(2)),
-      linhaCSVEscape(ped.data),
-      linhaCSVEscape(ped.pagamento),
-      linhaCSVEscape(ped.entregaTipo),
-      linhaCSVEscape(ped.status)
-    ].join(',');
-  }).join('\n');
-  await fs.writeFile(arquivoPedidos, header + '\n' + linhas, 'utf8');
-}
 
 /**
- * carregarPedidosCSV:
- * - tolera versões antigas onde o arquivo pode ter apenas produtoIds (coluna antiga),
- * - ou onde itensJson é uma string JSON.
+ * Assumimos as tabelas:
+ * - Clientes(id, nome, telefone, cep, endereco, complemento)
+ * - Produtos(id, nome, preco, tipo)
+ * - Pedidos(id, clienteId, total, data, pagamento, entrega, status)  <-- status pode ser adicionado se não existir
+ * - PedidoItens(id, pedidoId, produtoId, quantidade, tamanho)
+ * - PizzaPrecos(produtoId PK, precoP, precoM, precoG)  <-- criada automaticamente se não existir
  */
-async function carregarPedidosCSV() {
-  try {
-    const txt = await fs.readFile(arquivoPedidos, 'utf8');
-    const linhas = txt.trim().split('\n');
-    pedidos = linhas.slice(1).map(l => {
-      const cols = splitCSVLine(l);
-      // se arquivo tiver o formato antigo (id,clienteId,produtoIds,total,data,pagamento,entrega)
-      // detectamos isso pelo número de colunas ou pelo formato do terceiro campo.
-      let itens: PedidoItem[] = [];
-      const third = cols[2] ?? '';
-      // tentativa 1: se third parece com JSON array -> parse
-      if (third.trim().startsWith('[') || third.trim().startsWith('{')) {
-        try {
-          const parsed = JSON.parse(third);
-          // parsed pode ser array de itens ou array de produtoIds - normalizar
-          if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'object') {
-            itens = parsed as PedidoItem[];
-          } else if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
-            // era uma lista de productIds (antigo) -> transformar em itens com quantidade 1 e precoUnitario 0 (será recalculado na carga)
-            itens = (parsed as string[]).map(pid => ({ produtoId: pid, quantidade: 1, precoUnitario: 0 }));
-          } else {
-            itens = [];
-          }
-        } catch {
-          itens = [];
-        }
-      } else {
-        // terceiro campo não é JSON -> possivelmente formato antigo, ou vazio
-        // tentar detectar se é produtoIds separados por '|' (antigo)
-        if (third.includes('|')) {
-          const ids = third.split('|').map(s => s.trim()).filter(Boolean);
-          itens = ids.map(pid => ({ produtoId: pid, quantidade: 1, precoUnitario: 0 }));
-        } else {
-          itens = [];
-        }
-      }
 
-      // Recalcular precoUnitario e precoAdicionaisUnit se estiverem zerados e produtos conhecem preços
-      for (const it of itens) {
-        if ((it.precoUnitario ?? 0) === 0) {
-          const prod = produtos.find(p => p.id === it.produtoId);
-          if (prod) {
-            if (prod.tipo === 'pizza' && it.tamanho && prod.precosPorTamanho) {
-              it.precoUnitario = prod.precosPorTamanho[it.tamanho as 'P'|'M'|'G'] ?? 0;
-            } else {
-              it.precoUnitario = prod.preco ?? 0;
-            }
-          }
-        }
-      }
+/* ------------------ util / inicialização DB ------------------ */
 
-      return {
-        id: cols[0] ?? '',
-        clienteId: cols[1] ?? '',
-        itens,
-        subtotal: cols[3] ? parseFloat(cols[3]) : 0,
-        taxaEntrega: cols[4] ? parseFloat(cols[4]) : 0,
-        total: cols[5] ? parseFloat(cols[5]) : 0,
-        data: cols[6] ?? '',
-        pagamento: (cols[7] ?? 'Dinheiro') as FormaPagamento,
-        entregaTipo: (cols[8] ?? 'Entrega') as TipoEntrega,
-        status: (cols[9] ?? 'aberto') as StatusPedido
-      } as Pedido;
-    });
-  } catch {
-    pedidos = [];
+async function ensureSchema() {
+  const pool = await getConnection();
+  // 1) garantir coluna 'status' em Pedidos
+  const addStatusQuery = `
+IF COL_LENGTH('dbo.Pedidos','status') IS NULL
+BEGIN
+  ALTER TABLE dbo.Pedidos ADD status NVARCHAR(20) CONSTRAINT DF_Pedidos_Status DEFAULT('aberto');
+END
+`;
+  await pool.request().batch(addStatusQuery);
+
+  // 2) garantir tabela PizzaPrecos
+  const createPizzaPrecos = `
+IF OBJECT_ID('dbo.PizzaPrecos','U') IS NULL
+BEGIN
+  CREATE TABLE dbo.PizzaPrecos (
+    produtoId INT PRIMARY KEY,
+    precoP DECIMAL(10,2) NULL,
+    precoM DECIMAL(10,2) NULL,
+    precoG DECIMAL(10,2) NULL
+  );
+END
+`;
+  await pool.request().batch(createPizzaPrecos);
+}
+
+/* ------------------ helpers ------------------ */
+
+function limparTela() {
+  console.clear();
+}
+
+function pausar() {
+  readlineSync.question("\nPressione ENTER para continuar...");
+}
+
+function formatMoney(v: number) {
+  return v.toFixed(2);
+}
+
+/* ------------------ tipos locais ------------------ */
+
+type FormaPagamento = "Dinheiro" | "Cartão" | "Pix";
+type TipoEntrega = "Entrega" | "Retirada";
+type StatusPedido = "aberto" | "preparando" | "pronto" | "entregue" | "cancelado";
+
+/* ------------------ menu principal ------------------ */
+
+async function menu() {
+  limparTela();
+process.stdout.setDefaultEncoding('utf8');
+  console.log("=== SISTEMA PIZZARIA ===");
+  console.log("1 - Cadastrar Cliente / Fazer Pedido");
+  console.log("2 - Listar Clientes");
+  console.log("3 - Cadastrar Produto (pizza / borda / adicional / outros)");
+  console.log("4 - Listar Produtos (Cardápio)");
+  console.log("5 - Relatórios de Vendas / Gerenciar Pedidos");
+  console.log("6 - Histórico de Pedidos por Cliente");
+  console.log("7 - Gerenciar Status");
+  console.log("8 - Limpeza de Dados (Excluir)");
+  console.log("9 - Sair");
+  const opcao = readlineSync.questionInt("\nEscolha uma opção: ");
+
+  switch (opcao) {
+    case 1:
+      await menuClientePedido();
+      break;
+    case 2:
+      await listarClientes();
+      break;
+    case 3:
+      await cadastrarProduto();
+      break;
+    case 4:
+      await listarProdutosCardapio();
+      break;
+    case 5:
+      await relatoriosVendas();
+      break;
+    case 6:
+      await historicoCliente();
+      break;
+    case 7:
+      await gerenciarAdicionaisBordasEstatus();
+      break;
+    case 8:
+      await menuLimpeza();
+      break;
+    case 9:
+      console.log("Saindo...");
+      process.exit(0);
+    default:
+      console.log("Opção inválida!");
+      pausar();
+      await menu();
   }
 }
 
-/* ------------------ Menu principal ------------------ */
+/* ------------------ clientes ------------------ */
 
-function menu() {
-  console.log('\n=== Sistema Pizzaria ===');
-  console.log('1 - Cadastrar Cliente / Fazer Pedido');
-  console.log('2 - Listar Clientes');
-  console.log('3 - Cadastrar Produto (pizza / borda / adicional / outros)');
-  console.log('4 - Listar Produtos (Cardápio)');
-  console.log('5 - Relatórios de Vendas / Gerenciar Pedidos');
-  console.log('6 - Histórico de Pedidos por Cliente');
-  console.log('7 - Limpeza de Dados (Excluir)');
-  console.log('8 - Gerenciar Pedidos (status / cancelar)');
-  console.log('9 - Sair');
-  ask('Escolha uma opção: ').then(op => {
-    switch(op.trim()) {
-      case '1': cadastrarOuSelecionarCliente(); break;
-      case '2': listarClientes(); break;
-      case '3': cadastrarProduto(); break;
-      case '4': listarProdutosCardapio(); break;
-      case '5': gerarRelatorios(); break;
-      case '6': selecionarClienteHistorico(); break;
-      case '7': menuLimpeza(); break;
-      case '8': gerenciarPedidoMenu(); break;
-      case '9': console.log('Até mais!'); rl.close(); break;
-      default: console.log('Opção inválida!'); menu();
-    }
-  });
+async function cadastrarCliente(): Promise<number> {
+  limparTela();
+  console.log("=== CADASTRAR CLIENTE ===");
+  const nome = readlineSync.question("Nome completo: ").trim();
+  const telefone = readlineSync.question("Telefone: ").trim();
+  const cep = readlineSync.question("CEP: ").trim();
+  const endereco = readlineSync.question("Endereço (rua, nº): ").trim();
+  const complemento = readlineSync.question("Complemento (opcional): ").trim();
+  const cidade = readlineSync.question("Cidade: ").trim();
+  const bairro = readlineSync.question("Bairro: ").trim();
+  const observacoes = readlineSync.question("Observações (ponto de referência etc) (opcional): ").trim();
+
+  // vamos concatenar endereço e complemento (a sua tabela tem ENDERECO e COMPLEMENTO)
+  const enderecoCompleto = `${endereco} - ${bairro} - ${cidade}`;
+
+  const pool = await getConnection();
+  const res = await pool
+    .request()
+    .input("nome", sql.NVarChar, nome)
+    .input("telefone", sql.NVarChar, telefone)
+    .input("cep", sql.NVarChar, cep)
+    .input("endereco", sql.NVarChar, enderecoCompleto)
+    .input("complemento", sql.NVarChar, complemento || observacoes || "")
+    .query(
+      `INSERT INTO Clientes (nome, telefone, cep, endereco, complemento)
+       OUTPUT INSERTED.id
+       VALUES (@nome, @telefone, @cep, @endereco, @complemento)`
+    );
+
+  const id = res.recordset[0].id;
+  console.log(`✅ Cliente cadastrado com sucesso! ID: ${id}`);
+  pausar();
+  return id;
 }
 
-/* ------------------ Clientes ------------------ */
-
-async function cadastrarOuSelecionarCliente() {
-  const r = (await ask('O cliente já está cadastrado? (s/n): ')).trim().toLowerCase();
-  if (r === 's') {
-    if (clientes.length === 0) {
-      console.log('Nenhum cliente cadastrado ainda.');
-      return cadastrarCliente();
-    }
-    clientes.forEach(c => console.log(`ID: ${c.id} | ${c.nome} | Tel: ${c.telefone} | CEP: ${c.cep}`));
-    const id = (await ask('Digite o ID do cliente: ')).trim();
-    const cliente = clientes.find(c => c.id === id);
-    if (!cliente) { console.log('Cliente não encontrado.'); return cadastrarOuSelecionarCliente(); }
-    await registrarPedido(cliente.id);
-  } else if (r === 'n') {
-    await cadastrarCliente();
+async function listarClientes() {
+  limparTela();
+  console.log("=== LISTA DE CLIENTES ===");
+  const pool = await getConnection();
+  const r = await pool.request().query("SELECT * FROM Clientes ORDER BY id");
+  if (r.recordset.length === 0) {
+    console.log("Nenhum cliente cadastrado.");
   } else {
-    console.log('Opção inválida.');
-    await cadastrarOuSelecionarCliente();
-  }
-}
-
-async function cadastrarCliente() {
-  const nome = (await ask('Nome do cliente: ')).trim();
-  const telefone = (await ask('Telefone: ')).trim();
-  const cep = (await ask('CEP: ')).trim();
-  const endereco = (await ask('Endereço completo: ')).trim();
-  const complemento = (await ask('Complemento: ')).trim();
-  const id = (clientes.length + 1).toString();
-  clientes.push({ id, nome, telefone, cep, endereco, complemento });
-  await salvarClientesCSV();
-  console.log('Cliente cadastrado com sucesso!');
-  await registrarPedido(id);
-}
-
-function listarClientes() {
-  if (clientes.length === 0) {
-    console.log('Nenhum cliente cadastrado.');
-  } else {
-    console.log('\n=== Lista de Clientes ===');
-    clientes.forEach(c => {
-      console.log(`ID: ${c.id} | Nome: ${c.nome} | Tel: ${c.telefone} | CEP: ${c.cep} | ${c.endereco} ${c.complemento ? '- ' + c.complemento : ''}`);
+    r.recordset.forEach((c: any) => {
+      console.log(`ID:${c.id} | ${c.nome} | Tel:${c.telefone} | CEP:${c.cep} | ${c.endereco} ${c.complemento ? '- ' + c.complemento : ''}`);
     });
-    console.log('========================\n');
   }
-  menu();
+  pausar();
+  await menu();
 }
 
-/* ------------------ Produtos ------------------ */
+/* ------------------ produtos ------------------ */
 
 async function cadastrarProduto() {
-  console.log('\nCategorias: 1-Pizza  2-Refrigerante  3-Sobremesa  4-Adicional  5-Borda  6-Outro');
-  const cat = (await ask('Escolha categoria (1-6): ')).trim();
-  const mapa: Record<string, CategoriaProduto> = { '1':'pizza','2':'refrigerante','3':'sobremesa','4':'adicional','5':'borda','6':'outro' };
-  const tipo = mapa[cat];
-  if (!tipo) { console.log('Categoria inválida.'); return menu(); }
+  limparTela();
+  console.log("=== CADASTRAR PRODUTO ===");
+  const nome = readlineSync.question("Nome do produto: ").trim();
+  console.log("Categorias: 1-Pizza  2-Bebida/Outros  3-Adicional  4-Borda");
+  const cat = readlineSync.questionInt("Escolha: ");
+  let tipo = "outro";
+  if (cat === 1) tipo = "pizza";
+  else if (cat === 2) tipo = "outro";
+  else if (cat === 3) tipo = "adicional";
+  else if (cat === 4) tipo = "borda";
 
-  const nome = (await ask('Nome do produto: ')).trim();
-  if (!nome) { console.log('Nome não pode ficar vazio.'); return menu(); }
+  const pool = await getConnection();
 
-  const novo: Produto = {
-    id: (produtos.length + 1).toString(),
-    nome,
-    tipo
-  };
+  if (tipo === "pizza") {
+    console.log("Informe os preços por tamanho (use '.' como separador)");
+    const precoP = parseFloat(readlineSync.question("Preço P: ").replace(",", "."));
+    const precoM = parseFloat(readlineSync.question("Preço M: ").replace(",", "."));
+    const precoG = parseFloat(readlineSync.question("Preço G: ").replace(",", "."));
 
-  if (tipo === 'pizza') {
-    const sub = (await ask('Subcategoria (1 - salgada, 2 - doce): ')).trim();
-    novo.subcategoria = sub === '2' ? 'doce' : 'salgada';
-    const pP = parseFloat((await ask('Preço P (ex: 29.90): ')).replace(',', '.'));
-    const pM = parseFloat((await ask('Preço M (ex: 39.90): ')).replace(',', '.'));
-    const pG = parseFloat((await ask('Preço G (ex: 49.90): ')).replace(',', '.'));
-    if ([pP,pM,pG].some(v => isNaN(v) || v <= 0)) { console.log('Preços inválidos.'); return menu(); }
-    novo.precosPorTamanho = { P: pP, M: pM, G: pG };
+    const insert = await pool.request()
+      .input("nome", sql.NVarChar, nome)
+      .input("tipo", sql.NVarChar, tipo)
+      .input("preco", sql.Decimal(10,2), 0)
+      .query("INSERT INTO Produtos (nome, tipo, preco) OUTPUT INSERTED.id VALUES (@nome, @tipo, @preco)");
+    const id = insert.recordset[0].id;
+
+    // gravar preços por tamanho em PizzaPrecos
+    await pool.request()
+      .input("produtoId", sql.Int, id)
+      .input("p", sql.Decimal(10,2), precoP)
+      .input("m", sql.Decimal(10,2), precoM)
+      .input("g", sql.Decimal(10,2), precoG)
+      .query(`INSERT INTO PizzaPrecos (produtoId, precoP, precoM, precoG) VALUES (@produtoId, @p, @m, @g)`);
+
+    console.log(`✅ Pizza cadastrada (ID ${id}).`);
+    pausar();
+    await menu();
+    return;
   } else {
-    const preco = parseFloat((await ask('Preço (ex: 9.90): ')).replace(',', '.'));
-    if (isNaN(preco) || preco <= 0) { console.log('Preço inválido.'); return menu(); }
-    novo.preco = preco;
+    const preco = parseFloat(readlineSync.question("Preço: ").replace(",", "."));
+    await pool.request()
+      .input("nome", sql.NVarChar, nome)
+      .input("tipo", sql.NVarChar, tipo)
+      .input("preco", sql.Decimal(10,2), preco)
+      .query("INSERT INTO Produtos (nome, tipo, preco) VALUES (@nome, @tipo, @preco)");
+    console.log("✅ Produto cadastrado.");
+    pausar();
+    await menu();
   }
-
-  produtos.push(novo);
-  await salvarProdutosCSV();
-  console.log(`Produto "${novo.nome}" cadastrado como ${novo.tipo}.`);
-  menu();
 }
 
-function listarProdutosCardapio() {
-  if (produtos.length === 0) {
-    console.log('Nenhum produto cadastrado.');
-    return menu();
-  }
-  console.log('\n========== CARDÁPIO ==========');
-
-  const pizzas = produtos.filter(p => p.tipo === 'pizza');
-  const salgadas = pizzas.filter(p => p.subcategoria === 'salgada');
-  const doces = pizzas.filter(p => p.subcategoria === 'doce');
-
-  if (salgadas.length) {
-    console.log('\n--- PIZZAS SALGADAS ---');
-    salgadas.forEach(p => console.log(`ID:${p.id} | ${p.nome} | P:${p.precosPorTamanho?.P?.toFixed(2)} M:${p.precosPorTamanho?.M?.toFixed(2)} G:${p.precosPorTamanho?.G?.toFixed(2)}`));
-  }
-  if (doces.length) {
-    console.log('\n--- PIZZAS DOCES ---');
-    doces.forEach(p => console.log(`ID:${p.id} | ${p.nome} | P:${p.precosPorTamanho?.P?.toFixed(2)} M:${p.precosPorTamanho?.M?.toFixed(2)} G:${p.precosPorTamanho?.G?.toFixed(2)}`));
+async function listarProdutosCardapio() {
+  limparTela();
+  console.log("=== CARDÁPIO ===");
+  const pool = await getConnection();
+  const res = await pool.request().query("SELECT * FROM Produtos ORDER BY tipo, nome");
+  if (res.recordset.length === 0) {
+    console.log("Nenhum produto cadastrado.");
+    pausar();
+    await menu();
+    return;
   }
 
-  const bordas = produtos.filter(p => p.tipo === 'borda');
-  if (bordas.length) {
-    console.log('\n--- BORDAS ---');
-    bordas.forEach(b => console.log(`ID:${b.id} | ${b.nome} | R$ ${b.preco?.toFixed(2)}`));
+  // listar pizzas com preços
+  const pizzas = res.recordset.filter((p:any) => p.tipo === "pizza");
+  if (pizzas.length) {
+    console.log("\n--- PIZZAS ---");
+    for (const p of pizzas) {
+      const pp = await pool.request().input("id", sql.Int, p.id).query("SELECT precoP, precoM, precoG FROM PizzaPrecos WHERE produtoId = @id");
+      const precos = pp.recordset[0] ?? { precoP: 0, precoM: 0, precoG: 0 };
+      console.log(`ID:${p.id} | ${p.nome} | P:${formatMoney(Number(precos.precoP))} M:${formatMoney(Number(precos.precoM))} G:${formatMoney(Number(precos.precoG))}`);
+    }
   }
 
-  const adicionais = produtos.filter(p => p.tipo === 'adicional');
-  if (adicionais.length) {
-    console.log('\n--- ADICIONAIS ---');
-    adicionais.forEach(a => console.log(`ID:${a.id} | ${a.nome} | R$ ${a.preco?.toFixed(2)}`));
-  }
-
-  const outros = produtos.filter(p => ['refrigerante','sobremesa','outro'].includes(p.tipo));
+  // demais produtos
+  const outros = res.recordset.filter((p:any) => p.tipo !== "pizza");
   if (outros.length) {
-    console.log('\n--- OUTROS ---');
-    outros.forEach(o => console.log(`ID:${o.id} | ${o.nome} | R$ ${o.preco?.toFixed(2)} | ${o.tipo}`));
+    console.log("\n--- OUTROS ---");
+    outros.forEach((o:any) => {
+      console.log(`ID:${o.id} | ${o.nome} | ${o.tipo} | R$ ${formatMoney(Number(o.preco))}`);
+    });
   }
 
-  console.log('==============================\n');
-  menu();
+  pausar();
+  await menu();
 }
 
-/* ------------------ Registrar Pedido (múltiplos itens) ------------------ */
+/* ------------------ pedidos ------------------ */
 
-function calcularTaxaPorCEP(cep: string): number {
-  const clean = (cep || '').replace(/\D/g,'');
-  if (clean.endsWith('00')) return 8;
-  return 5;
+async function menuClientePedido() {
+  limparTela();
+  console.log("=== CADASTRAR CLIENTE / FAZER PEDIDO ===");
+  console.log("1 - Novo cliente");
+  console.log("2 - Cliente existente");
+  const opc = readlineSync.questionInt("Escolha uma opção: ");
+  let clienteId: number;
+  if (opc === 1) clienteId = await cadastrarCliente();
+  else {
+    clienteId = readlineSync.questionInt("ID do cliente: ");
+  }
+  await fazerPedido(clienteId);
 }
 
-async function registrarPedido(clienteId: string) {
-  const cliente = clientes.find(c => c.id === clienteId);
-  if (!cliente) { console.log('Cliente não encontrado.'); return menu(); }
-  if (produtos.length === 0) { console.log('Nenhum produto cadastrado.'); return menu(); }
+async function fazerPedido(clienteId: number) {
+  limparTela();
+  console.log("=== FAZER PEDIDO ===");
 
-  console.log('\n=== Registrar Pedido ===');
-  listarProdutosResumo();
+  const pool = await getConnection();
+  const produtosRes = await pool.request().query("SELECT * FROM Produtos ORDER BY tipo, nome");
+  if (produtosRes.recordset.length === 0) {
+    console.log("Nenhum produto cadastrado.");
+    pausar();
+    return;
+  }
 
-  const itens: PedidoItem[] = [];
+  const itens: { produtoId:number; quantidade:number; tamanho?:string; descricao?:string; precoUnit:number }[] = [];
+  let continuar = true;
+  while (continuar) {
+    console.log("\nProdutos disponíveis:");
+    produtosRes.recordset.forEach((p:any) => {
+      console.log(`${p.id} - ${p.nome} (${p.tipo}) - R$ ${formatMoney(Number(p.preco))}`);
+    });
 
-  while (true) {
-    const prodId = (await ask('Digite o ID do produto a adicionar (ou ENTER para terminar): ')).trim();
-    if (!prodId) break;
-    const produto = produtos.find(p => p.id === prodId);
-    if (!produto) { console.log('Produto inválido.'); continue; }
+    const pid = readlineSync.questionInt("\nDigite o ID do produto (0 para finalizar): ");
+    if (pid === 0) break;
+    const produto = produtosRes.recordset.find((p:any) => p.id === pid);
+    if (!produto) { console.log("Produto inválido."); continue; }
 
-    const qtd = Math.max(1, parseInt((await ask('Quantidade: ')).trim()) || 1);
+    const qtd = Math.max(1, readlineSync.questionInt("Quantidade: "));
+    let tamanho: string | undefined;
+    let precoUnit = Number(produto.preco);
 
-    let tamanho: 'P'|'M'|'G'|undefined = undefined;
-    let precoUnitario = 0;
-    let precoAdicionaisUnit = 0;
-    let bordaId: string | null = null;
-    const adicionaisIds: string[] = [];
+    if (produto.tipo === "pizza") {
+      const tam = (readlineSync.question("Tamanho (P/M/G) [M]: ") || "M").toUpperCase();
+      tamanho = (["P","M","G"].includes(tam) ? tam : "M");
+      // buscar preço da pizza nos precos
+      const pp = await pool.request().input("pid", sql.Int, pid).query("SELECT precoP, precoM, precoG FROM PizzaPrecos WHERE produtoId = @pid");
+      const precos = pp.recordset[0];
+      if (precos) {
+        precoUnit = tamanho === "P" ? Number(precos.precoP) : tamanho === "M" ? Number(precos.precoM) : Number(precos.precoG);
+      } else {
+        precoUnit = Number(produto.preco) || 0;
+      }
 
-    if (produto.tipo === 'pizza') {
-      const t = ((await ask('Tamanho (P/M/G) [M]: ')).trim().toUpperCase() || 'M');
-      if (!['P','M','G'].includes(t)) { console.log('Tamanho inválido. Usando M.'); tamanho = 'M'; } else tamanho = t as 'P'|'M'|'G';
-      precoUnitario = produto.precosPorTamanho ? produto.precosPorTamanho[tamanho] : 0;
-
-      // borda (opcional)
-      const bordas = produtos.filter(p => p.tipo === 'borda');
+      // borda
+      const bordas = (await pool.request().query("SELECT * FROM Produtos WHERE tipo = 'borda'")).recordset;
+      let bordaId: number | null = null;
       if (bordas.length) {
-        console.log('Bordas disponíveis (ou ENTER para nenhuma):');
-        bordas.forEach(b => console.log(`ID:${b.id} | ${b.nome} | R$ ${b.preco?.toFixed(2)}`));
-        const bordResp = (await ask('ID da borda (ou ENTER): ')).trim();
-        if (bordResp) {
-          const bSel = bordas.find(b => b.id === bordResp);
-          if (bSel) { bordaId = bSel.id; precoAdicionaisUnit += bSel.preco ?? 0; }
-          else console.log('Borda inválida; ignorada.');
+        console.log("Bordas disponíveis (ou ENTER para nenhuma):");
+        bordas.forEach((b:any) => console.log(`ID:${b.id} | ${b.nome} | R$ ${formatMoney(Number(b.preco))}`));
+        const bord = readlineSync.question("ID da borda (ou ENTER): ").trim();
+        if (bord) {
+          const bid = Number(bord);
+          const bSel = bordas.find((x:any) => x.id === bid);
+          if (bSel) {
+            itens.push({ produtoId: bSel.id, quantidade: 1*qtd, descricao: `Borda: ${bSel.nome}`, precoUnit: Number(bSel.preco) });
+          } else console.log("Borda inválida; ignorada.");
         }
       }
 
       // adicionais
-      const adicionais = produtos.filter(p => p.tipo === 'adicional');
+      const adicionais = (await pool.request().query("SELECT * FROM Produtos WHERE tipo = 'adicional'")).recordset;
       if (adicionais.length) {
-        console.log('Adicionais disponíveis (separe IDs por vírgula ou ENTER para nenhum):');
-        adicionais.forEach(a => console.log(`ID:${a.id} | ${a.nome} | R$ ${a.preco?.toFixed(2)}`));
-        const addResp = (await ask('IDs dos adicionais: ')).trim();
+        console.log("Adicionais disponíveis (separe IDs por vírgula ou ENTER para nenhum):");
+        adicionais.forEach((a:any) => console.log(`ID:${a.id} | ${a.nome} | R$ ${formatMoney(Number(a.preco))}`));
+        const addResp = readlineSync.question("IDs dos adicionais: ").trim();
         if (addResp) {
-          const addIds = addResp.split(',').map(s => s.trim()).filter(Boolean);
-          for (const aid of addIds) {
-            const aProd = adicionais.find(a => a.id === aid);
-            if (aProd) { adicionaisIds.push(aid); precoAdicionaisUnit += aProd.preco ?? 0; }
-            else console.log(`Adicional ${aid} inválido e será ignorado.`);
+          const ids = addResp.split(",").map(s=>s.trim()).filter(Boolean).map(Number);
+          for (const aid of ids) {
+            const aProd = adicionais.find((x:any) => x.id === aid);
+            if (aProd) {
+              itens.push({ produtoId: aProd.id, quantidade: 1*qtd, descricao: `Adicional: ${aProd.nome}`, precoUnit: Number(aProd.preco) });
+            } else {
+              console.log(`Adicional ${aid} inválido; ignorado.`);
+            }
           }
         }
       }
-    } else {
-      precoUnitario = produto.preco ?? 0;
     }
 
-    itens.push({
-      produtoId: produto.id,
-      quantidade: qtd,
-      tamanho,
-      bordaId,
-      adicionaisIds,
-      precoUnitario,
-      precoAdicionaisUnit
-    });
+    // adicionar item principal (pizza ou outro)
+    itens.push({ produtoId: produto.id, quantidade: qtd, tamanho, descricao: produto.nome, precoUnit });
 
-    console.log(`Adicionado ${produto.nome} x${qtd}`);
+    const continuarResp = (readlineSync.question("Deseja adicionar mais itens? (s/n): ") || "s").toLowerCase();
+    continuar = continuarResp.startsWith("s");
   }
 
-  if (itens.length === 0) { console.log('Nenhum item adicionado. Voltando ao menu.'); return menu(); }
+  if (itens.length === 0) {
+    console.log("Nenhum item adicionado. Voltando ao menu.");
+    pausar();
+    return;
+  }
 
-  let pagamento = (await ask('Forma de pagamento (Dinheiro / Cartão / Pix): ')).trim();
-  if (!['Dinheiro','Cartão','Pix'].includes(pagamento)) pagamento = 'Dinheiro';
-  let entrega = (await ask('Entrega ou Retirada? (Entrega / Retirada): ')).trim();
-  if (!['Entrega','Retirada'].includes(entrega)) entrega = 'Entrega';
+  // calcular total
+  let total = 0;
+  for (const it of itens) total += (it.precoUnit || 0) * (it.quantidade || 1);
 
-  // calcular subtotal
-  let subtotal = 0;
+  // perguntar forma de pagamento / entrega
+  let pagamento = (readlineSync.question("Forma de pagamento (Dinheiro/Cartão/Pix) [Dinheiro]: ") || "Dinheiro");
+  if (!["Dinheiro","Cartão","Pix"].includes(pagamento)) pagamento = "Dinheiro";
+  let entrega = (readlineSync.question("Entrega ou Retirada? (Entrega/Retirada) [Entrega]: ") || "Entrega");
+  if (!["Entrega","Retirada"].includes(entrega)) entrega = "Entrega";
+
+  // inserir pedido
+  const insertPedido = await pool.request()
+    .input("clienteId", sql.Int, clienteId)
+    .input("total", sql.Decimal(10,2), total)
+    .input("pagamento", sql.NVarChar, pagamento)
+    .input("entrega", sql.NVarChar, entrega)
+    .input("status", sql.NVarChar, "aberto")
+    .query(`INSERT INTO Pedidos (clienteId, total, data, pagamento, entrega, status)
+            OUTPUT INSERTED.id
+            VALUES (@clienteId, @total, GETDATE(), @pagamento, @entrega, @status)`);
+
+  const pedidoId = insertPedido.recordset[0].id;
+
+  // inserir itens
   for (const it of itens) {
-    const unit = it.precoUnitario + (it.precoAdicionaisUnit ?? 0);
-    subtotal += unit * it.quantidade;
+    await pool.request()
+      .input("pedidoId", sql.Int, pedidoId)
+      .input("produtoId", sql.Int, it.produtoId)
+      .input("quantidade", sql.Int, it.quantidade)
+      .input("tamanho", sql.NVarChar, it.tamanho ?? "")
+      .query(`INSERT INTO PedidoItens (pedidoId, produtoId, quantidade, tamanho)
+              VALUES (@pedidoId, @produtoId, @quantidade, @tamanho)`);
   }
 
-  let taxaEntrega = 0;
-  if (entrega === 'Entrega') taxaEntrega = calcularTaxaPorCEP(cliente.cep);
-
-  const total = subtotal + taxaEntrega;
-  const data = new Date().toISOString().slice(0,10);
-  const id = (pedidos.length + 1).toString();
-  const pedido: Pedido = {
-    id, clienteId, itens, subtotal, taxaEntrega, total,
-    data, pagamento: pagamento as FormaPagamento,
-    entregaTipo: entrega as TipoEntrega,
-    status: 'aberto'
-  };
-
-  pedidos.push(pedido);
-  await salvarPedidosCSV();
-  console.log(`Pedido registrado! ID:${pedido.id} | Total: R$ ${pedido.total.toFixed(2)}`);
-
-  await gerarRecibo(pedido);
-  console.log(`Recibo gerado em ${pastaRecibos}`);
-
-  menu();
+  console.log(`✅ Pedido #${pedidoId} registrado! Total: R$ ${formatMoney(total)}`);
+  gerarRecibo(pedidoId).catch(()=>{});
+  pausar();
+  await menu();
 }
 
-function listarProdutosResumo() {
-  produtos.forEach(p => {
-    if (p.tipo === 'pizza') {
-      console.log(`ID:${p.id} | ${p.nome} (pizza/${p.subcategoria}) - P:${p.precosPorTamanho?.P?.toFixed(2)} M:${p.precosPorTamanho?.M?.toFixed(2)} G:${p.precosPorTamanho?.G?.toFixed(2)}`);
-    } else {
-      console.log(`ID:${p.id} | ${p.nome} - R$ ${p.preco?.toFixed(2)} | ${p.tipo}`);
-    }
-  });
-}
+/* ------------------ gerar recibo ------------------ */
 
-/* ------------------ Gerar Recibo ------------------ */
+async function gerarRecibo(pedidoId: number) {
+  const pool = await getConnection();
 
-async function gerarRecibo(pedido: Pedido) {
-  await garantirPastaDados();
-  const cliente = clientes.find(c => c.id === pedido.clienteId);
+  // buscar pedido e cliente
+  const ped = await pool.request().input("id", sql.Int, pedidoId).query("SELECT p.*, c.nome AS clienteNome, c.telefone FROM Pedidos p JOIN Clientes c ON c.id = p.clienteId WHERE p.id = @id");
+  if (ped.recordset.length === 0) {
+    console.log("Pedido não encontrado para gerar recibo.");
+    return;
+  }
+  const pinfo = ped.recordset[0];
+
+  // itens
+  const itens = await pool.request().input("id", sql.Int, pedidoId).query(`
+    SELECT pi.*, pr.nome AS produtoNome, pr.tipo, pr.preco AS produtoPreco
+    FROM PedidoItens pi
+    JOIN Produtos pr ON pr.id = pi.produtoId
+    WHERE pi.pedidoId = @id
+  `);
+
+  const recibosDir = path.join(__dirname, "../data/recibos");
+  if (!fs.existsSync(recibosDir)) fs.mkdirSync(recibosDir, { recursive: true });
+
   const lines: string[] = [];
-  lines.push(`=== Recibo de Pedido #${pedido.id} ===`);
-  lines.push(`Data: ${pedido.data}`);
-  lines.push(`Cliente: ${cliente?.nome}`);
-  lines.push(`Telefone: ${cliente?.telefone}`);
-  lines.push(`Endereço: ${cliente?.endereco} ${cliente?.complemento ? ', ' + cliente?.complemento : ''}`);
-  lines.push(`Forma de pagamento: ${pedido.pagamento}`);
-  lines.push(`Entrega tipo: ${pedido.entregaTipo}`);
-  lines.push(`Status: ${pedido.status}`);
+  lines.push(`=== Recibo Pedido #${pedidoId} ===`);
+  lines.push(`Data: ${new Date(pinfo.data).toLocaleString()}`);
+  lines.push(`Cliente: ${pinfo.clienteNome} Tel: ${pinfo.telefone}`);
+  lines.push(`Pagamento: ${pinfo.pagamento} | Entrega: ${pinfo.entrega} | Status: ${pinfo.status}`);
   lines.push('--- Itens ---');
 
-  for (const it of pedido.itens) {
-    const prod = produtos.find(p => p.id === it.produtoId);
-    if (!prod) continue;
-    let line = `${prod.nome}`;
-    if (prod.tipo === 'pizza') line += ` (${it.tamanho})`;
-    line += ` x${it.quantidade} -> Unit: R$ ${it.precoUnitario.toFixed(2)}`;
-    if (it.bordaId) {
-      const b = produtos.find(bb => bb.id === it.bordaId);
-      if (b) line += ` | Borda: ${b.nome} (R$ ${b.preco?.toFixed(2)})`;
+  let soma = 0;
+  for (const it of itens.recordset) {
+    let unit = Number(it.produtoPreco || 0);
+    if (it.tipo === "pizza") {
+      // checar PizzaPrecos
+      const prc = await pool.request().input("pid", sql.Int, it.produtoId).query("SELECT precoP, precoM, precoG FROM PizzaPrecos WHERE produtoId = @pid");
+      const precos = prc.recordset[0];
+      if (precos) {
+        unit = it.tamanho === "P" ? Number(precos.precoP) : it.tamanho === "M" ? Number(precos.precoM) : Number(precos.precoG);
+      }
     }
-    if (it.adicionaisIds && it.adicionaisIds.length) {
-      const nomes = it.adicionaisIds.map(id => produtos.find(p => p.id === id)?.nome ?? id);
-      line += ` | Adicionais: ${nomes.join(', ')}`;
-    }
-    const totalItem = (it.precoUnitario + (it.precoAdicionaisUnit ?? 0)) * it.quantidade;
-    line += ` | Total item: R$ ${totalItem.toFixed(2)}`;
-    lines.push(line);
+    const totalItem = unit * it.quantidade;
+    soma += totalItem;
+    lines.push(`${it.produtoNome} ${it.tamanho ? `(${it.tamanho})` : ""} x${it.quantidade} -> Unit: R$ ${formatMoney(unit)} | Total: R$ ${formatMoney(totalItem)}`);
   }
 
-  lines.push('--- Subtotal ---');
-  lines.push(`R$ ${pedido.subtotal.toFixed(2)}`);
-  if (pedido.taxaEntrega > 0) lines.push(`Taxa de entrega: R$ ${pedido.taxaEntrega.toFixed(2)}`);
   lines.push('--- Total ---');
-  lines.push(`R$ ${pedido.total.toFixed(2)}`);
+  lines.push(`R$ ${formatMoney(soma)}`);
 
-  const arquivo = path.join(pastaRecibos, `pedido_${pedido.id}.txt`);
-  await fs.writeFile(arquivo, lines.join('\n'), 'utf8');
+  const filePath = path.join(recibosDir, `pedido_${pedidoId}.txt`);
+  fs.writeFileSync(filePath, lines.join("\n"), "utf8");
+  console.log(`🧾 Recibo gerado em ${filePath}`);
 }
 
-/* ------------------ Relatórios ------------------ */
+/* ------------------ relatórios / histórico ------------------ */
 
-function gerarRelatorios() {
-  if (pedidos.length === 0) { console.log('Nenhum pedido registrado ainda.'); menu(); return; }
+async function relatoriosVendas() {
+  limparTela();
+  console.log("=== RELATÓRIOS DE VENDAS ===");
+  const pool = await getConnection();
+  const res = await pool.request().query(`
+    SELECT p.id, p.clienteId, c.nome AS clienteNome, p.total, p.data, p.status
+    FROM Pedidos p
+    JOIN Clientes c ON c.id = p.clienteId
+    ORDER BY p.data DESC
+  `);
 
-  const vendasPorDia: Record<string, number> = {};
-  const vendasPorMes: Record<string, number> = {};
-  const produtosVendidos: Record<string, number> = {};
-  const pizzasPorTamanho: Record<string, number> = { P:0, M:0, G:0 };
-
-  // iteração segura: garante que ped.itens seja array
-  for (const ped of pedidos) {
-    let itens = ped.itens;
-    if (!Array.isArray(itens)) {
-      // caso venha como string ou mal formado, tentar parse
-      try { itens = JSON.parse((itens as any) as string); } catch { itens = []; }
-    }
-    vendasPorDia[ped.data] = (vendasPorDia[ped.data] || 0) + 1;
-    const mes = ped.data.slice(0,7);
-    vendasPorMes[mes] = (vendasPorMes[mes] || 0) + 1;
-
-    for (const it of itens as PedidoItem[]) {
-      produtosVendidos[it.produtoId] = (produtosVendidos[it.produtoId] || 0) + it.quantidade;
-      const pr = produtos.find(pp => pp.id === it.produtoId);
-      if (pr?.tipo === 'pizza' && it.tamanho) pizzasPorTamanho[it.tamanho] = (pizzasPorTamanho[it.tamanho] || 0) + it.quantidade;
-      if (it.bordaId) produtosVendidos[it.bordaId] = (produtosVendidos[it.bordaId] || 0) + it.quantidade;
-      if (it.adicionaisIds) it.adicionaisIds.forEach(aid => produtosVendidos[aid] = (produtosVendidos[aid] || 0) + it.quantidade);
-    }
+  if (res.recordset.length === 0) {
+    console.log("Nenhum pedido encontrado.");
+  } else {
+    res.recordset.forEach((r:any) => {
+      console.log(`Pedido #${r.id} | Cliente: ${r.clienteNome} | Total: R$ ${formatMoney(Number(r.total))} | Data: ${new Date(r.data).toLocaleString()} | Status: ${r.status}`);
+    });
   }
 
-  console.log('\n=== Vendas por dia ===');
-  Object.entries(vendasPorDia).forEach(([d,q]) => console.log(`${d}: ${q} pedido(s)`));
-
-  console.log('\n=== Vendas por mês ===');
-  Object.entries(vendasPorMes).forEach(([m,q]) => console.log(`${m}: ${q} pedido(s)`));
-
-  console.log('\n=== Pizzas por tamanho ===');
-  console.log(`P: ${pizzasPorTamanho.P}  M: ${pizzasPorTamanho.M}  G: ${pizzasPorTamanho.G}`);
-
-  console.log('\n=== Top produtos vendidos ===');
-  const arr = Object.entries(produtosVendidos).map(([pid,q]) => {
-    const p = produtos.find(pp => pp.id === pid);
-    return { nome: p ? `${p.nome} (${p.tipo})` : pid, qtd: q };
-  }).sort((a,b) => b.qtd - a.qtd).slice(0,10);
-  arr.forEach(a => console.log(`${a.nome}: ${a.qtd}`));
-
-  const totalVendido = pedidos.reduce((s,p) => s + p.total, 0);
-  const ticketMedio = totalVendido / pedidos.length;
-  console.log(`\nTotal vendido: R$ ${totalVendido.toFixed(2)}`);
-  console.log(`Ticket médio: R$ ${ticketMedio.toFixed(2)}`);
-
-  menu();
-}
-
-/* ------------------ Histórico de Pedidos por Cliente ------------------ */
-
-async function selecionarClienteHistorico() {
-  if (clientes.length === 0) { console.log('Nenhum cliente cadastrado.'); menu(); return; }
-  clientes.forEach(c => console.log(`ID: ${c.id} | ${c.nome}`));
-  const id = (await ask('Digite o ID do cliente para ver histórico: ')).trim();
-  mostrarHistoricoCliente(id);
-}
-
-function mostrarHistoricoCliente(clienteId: string) {
-  const cliente = clientes.find(c => c.id === clienteId);
-  if (!cliente) { console.log('Cliente não encontrado.'); menu(); return; }
-
-  const pedidosCliente = pedidos.filter(p => p.clienteId === clienteId);
-  if (pedidosCliente.length === 0) { console.log('Nenhum pedido registrado para esse cliente.'); menu(); return; }
-
-  console.log(`\n=== Histórico de ${cliente.nome} ===`);
-  for (const p of pedidosCliente) {
-    console.log(`Pedido #${p.id} | Data: ${p.data} | Total: R$ ${p.total.toFixed(2)} | Pagamento: ${p.pagamento} | Status: ${p.status}`);
-    let itens = p.itens;
-    if (!Array.isArray(itens)) {
-      try { itens = JSON.parse((itens as any) as string); } catch { itens = []; }
-    }
-    for (const i of itens as PedidoItem[]) {
-      const prod = produtos.find(pr => pr.id === i.produtoId);
-      let line = `  - ${prod?.nome ?? i.produtoId}`;
-      if (prod?.tipo === 'pizza') line += ` (${i.tamanho})`;
-      line += ` x${i.quantidade} -> Unit: R$ ${i.precoUnitario.toFixed(2)}`;
-      if (i.precoAdicionaisUnit && i.precoAdicionaisUnit > 0) line += ` | Adic/unit: R$ ${i.precoAdicionaisUnit.toFixed(2)}`;
-      console.log(line);
-    }
+  // permitir gerenciar status
+  console.log("\nDeseja gerenciar um pedido? (id ou 0 para voltar)");
+  const id = readlineSync.questionInt("ID: ");
+  if (id > 0) {
+    await gerenciarPedidoPorId(id);
   }
-  console.log('================================\n');
-  menu();
+
+  pausar();
+  await menu();
 }
 
-/* ------------------ Limpeza de dados ------------------ */
+async function historicoCliente() {
+  limparTela();
+  console.log("=== HISTÓRICO DE PEDIDOS POR CLIENTE ===");
+  const idCliente = readlineSync.questionInt("Informe o ID do cliente: ");
+  const pool = await getConnection();
+  const cliente = await pool.request().input("id", sql.Int, idCliente).query("SELECT * FROM Clientes WHERE id = @id");
+  if (cliente.recordset.length === 0) {
+    console.log("Cliente não encontrado.");
+    pausar();
+    await menu();
+    return;
+  }
+
+  console.log(`Cliente: ${cliente.recordset[0].nome}`);
+  const pedidos = await pool.request().input("id", sql.Int, idCliente).query("SELECT * FROM Pedidos WHERE clienteId = @id ORDER BY data DESC");
+  if (pedidos.recordset.length === 0) {
+    console.log("Nenhum pedido para este cliente.");
+    pausar();
+    await menu();
+    return;
+  }
+
+  for (const p of pedidos.recordset) {
+    console.log(`\nPedido #${p.id} | Data: ${new Date(p.data).toLocaleString()} | Total: R$ ${formatMoney(Number(p.total))} | Status: ${p.status}`);
+    const itens = await pool.request().input("pid", sql.Int, p.id).query(`
+      SELECT pi.*, pr.nome AS produtoNome, pr.preco, pr.tipo
+      FROM PedidoItens pi
+      JOIN Produtos pr ON pr.id = pi.produtoId
+      WHERE pi.pedidoId = @pid
+    `);
+    itens.recordset.forEach((it:any) => {
+      console.log(`  - ${it.produtoNome} ${it.tamanho ? `(${it.tamanho})` : ""} x${it.quantidade}`);
+    });
+  }
+
+  pausar();
+  await menu();
+}
+
+/* ------------------ limpeza / exclusão ------------------ */
 
 async function menuLimpeza() {
-  console.log('\n1 - Excluir Cliente');
-  console.log('2 - Excluir Produto');
-  console.log('3 - Excluir Pedido');
-  console.log('4 - Voltar');
-  const opt = (await ask('Escolha: ')).trim();
-  if (opt === '1') await excluirCliente();
-  else if (opt === '2') await excluirProduto();
-  else if (opt === '3') await excluirPedido();
-  else menu();
+  limparTela();
+  console.log("=== LIMPEZA DE DADOS ===");
+  console.log("1 - Excluir Cliente");
+  console.log("2 - Excluir Produto");
+  console.log("3 - Excluir Pedido");
+  console.log("4 - Voltar");
+  const opc = readlineSync.questionInt("Escolha: ");
+  switch (opc) {
+    case 1: await excluirCliente(); break;
+    case 2: await excluirProduto(); break;
+    case 3: await excluirPedido(); break;
+    default: await menu(); break;
+  }
 }
 
 async function excluirCliente() {
-  if (clientes.length === 0) { console.log('Nenhum cliente cadastrado.'); menu(); return; }
-  clientes.forEach(c => console.log(`ID:${c.id} | ${c.nome}`));
-  const id = (await ask('ID do cliente a excluir: ')).trim();
-  const idx = clientes.findIndex(c => c.id === id);
-  if (idx === -1) { console.log('Cliente não encontrado.'); menu(); return; }
-  clientes.splice(idx,1);
-  await salvarClientesCSV();
-  pedidos = pedidos.filter(p => p.clienteId !== id);
-  await salvarPedidosCSV();
-  console.log('Cliente e pedidos associados excluídos.');
-  menu();
+  const id = readlineSync.questionInt("ID do cliente a excluir: ");
+  const pool = await getConnection();
+  await pool.request().input("id", sql.Int, id).query("DELETE FROM Clientes WHERE id = @id");
+  console.log("✅ Cliente excluído.");
+  pausar();
+  await menuLimpeza();
 }
 
 async function excluirProduto() {
-  if (produtos.length === 0) { console.log('Nenhum produto cadastrado.'); menu(); return; }
-  produtos.forEach(p => console.log(`ID:${p.id} | ${p.nome} | ${p.tipo} | R$ ${p.preco ?? ''}`));
-  const id = (await ask('ID do produto a excluir: ')).trim();
-  const idx = produtos.findIndex(p => p.id === id);
-  if (idx === -1) { console.log('Produto não encontrado.'); menu(); return; }
-  produtos.splice(idx,1);
-  await salvarProdutosCSV();
-
-  // remover referências nos pedidos e recalcular
-  for (const ped of pedidos) {
-    ped.itens = ped.itens.filter(it => it.produtoId !== id && it.bordaId !== id && !(it.adicionaisIds || []).includes(id));
-    ped.subtotal = ped.itens.reduce((s,it) => s + (it.precoUnitario + (it.precoAdicionaisUnit ?? 0)) * it.quantidade, 0);
-    ped.total = ped.subtotal + ped.taxaEntrega;
-  }
-  await salvarPedidosCSV();
-  console.log('Produto removido e pedidos atualizados.');
-  menu();
+  const id = readlineSync.questionInt("ID do produto a excluir: ");
+  const pool = await getConnection();
+  // remover precos de pizza se houver
+  await pool.request().input("pid", sql.Int, id).query("DELETE FROM PizzaPrecos WHERE produtoId = @pid");
+  await pool.request().input("id", sql.Int, id).query("DELETE FROM Produtos WHERE id = @id");
+  console.log("✅ Produto excluído.");
+  pausar();
+  await menuLimpeza();
 }
 
 async function excluirPedido() {
-  if (pedidos.length === 0) { console.log('Nenhum pedido cadastrado.'); menu(); return; }
-  pedidos.forEach(p => console.log(`ID:${p.id} | Cliente:${p.clienteId} | Total:R$ ${p.total.toFixed(2)} | Status:${p.status}`));
-  const id = (await ask('ID do pedido a excluir: ')).trim();
-  const idx = pedidos.findIndex(p => p.id === id);
-  if (idx === -1) { console.log('Pedido não encontrado.'); menu(); return; }
-  pedidos.splice(idx,1);
-  await salvarPedidosCSV();
-  console.log('Pedido excluído.');
-  menu();
+  const id = readlineSync.questionInt("ID do pedido a excluir: ");
+  const pool = await getConnection();
+  await pool.request().input("id", sql.Int, id).query("DELETE FROM PedidoItens WHERE pedidoId = @id");
+  await pool.request().input("id", sql.Int, id).query("DELETE FROM Pedidos WHERE id = @id");
+  console.log("✅ Pedido excluído.");
+  pausar();
+  await menuLimpeza();
 }
 
-/* ------------------ Gerenciar pedidos (status) ------------------ */
+/* ------------------ adicionais / bordas / status ------------------ */
 
-async function gerenciarPedidoMenu() {
-  if (pedidos.length === 0) { console.log('Nenhum pedido registrado.'); menu(); return; }
-  console.log('\nPedidos:');
-  pedidos.forEach(p => console.log(`ID:${p.id} | Cliente:${p.clienteId} | Total:R$ ${p.total.toFixed(2)} | Status:${p.status}`));
-  const id = (await ask('ID do pedido para gerenciar (ou ENTER para voltar): ')).trim();
-  if (!id) return menu();
-  const ped = pedidos.find(p => p.id === id);
-  if (!ped) { console.log('Pedido não encontrado.'); return menu(); }
-  console.log(`Pedido #${ped.id} - Status atual: ${ped.status}`);
-  console.log('1 - Avançar status (aberto -> preparando -> pronto -> entregue)');
-  console.log('2 - Cancelar pedido');
-  console.log('3 - Voltar');
-  const opt = (await ask('Escolha: ')).trim();
-  if (opt === '1') await avancarStatusPedido(ped);
-  else if (opt === '2') { ped.status = 'cancelado'; await salvarPedidosCSV(); console.log('Pedido cancelado.'); menu(); }
-  else menu();
+async function gerenciarAdicionaisBordasEstatus() {
+  limparTela();
+  console.log("=== GERENCIAR STATUS ===");
+  console.log("1 - Atualizar status de um pedido");
+  console.log("2 - Voltar");
+  const opc = readlineSync.questionInt("Escolha: ");
+  switch (opc) {
+    case 1:
+      const id = readlineSync.questionInt("ID do pedido: ");
+      await gerenciarPedidoPorId(id);
+      break;
+    default: await menu(); break;
+  }
 }
 
-async function avancarStatusPedido(ped: Pedido) {
-  const fluxo: StatusPedido[] = ['aberto','preparando','pronto','entregue'];
-  const idx = fluxo.indexOf(ped.status);
-  if (idx === -1) { console.log('Status inválido.'); menu(); return; }
-  if (idx === fluxo.length - 1) { console.log('Pedido já entregue.'); menu(); return; }
-  ped.status = fluxo[idx + 1];
-  await salvarPedidosCSV();
-  console.log(`Status atualizado para ${ped.status}`);
-  menu();
+async function gerenciarPedidoPorId(id: number) {
+  const pool = await getConnection();
+  const p = await pool.request().input("id", sql.Int, id).query("SELECT * FROM Pedidos WHERE id = @id");
+  if (p.recordset.length === 0) { console.log("Pedido não encontrado."); pausar(); return; }
+  const pedido = p.recordset[0];
+  console.log(`Pedido #${pedido.id} | Total: R$ ${formatMoney(Number(pedido.total))} | Status: ${pedido.status}`);
+  console.log("1 - Avançar status (aberto->preparando->pronto->entregue)");
+  console.log("2 - Marcar como cancelado");
+  console.log("3 - Voltar");
+  const opc = readlineSync.questionInt("Escolha: ");
+  const fluxo = ["aberto","preparando","pronto","entregue"] as StatusPedido[];
+  if (opc === 1) {
+    const idx = fluxo.indexOf(pedido.status as StatusPedido);
+    if (idx === -1 || idx === fluxo.length - 1) { console.log("Não é possível avançar."); }
+    else {
+      const novo = fluxo[idx+1];
+      await pool.request().input("id", sql.Int, id).input("status", sql.NVarChar, novo).query("UPDATE Pedidos SET status = @status WHERE id = @id");
+      console.log(`Status atualizado para ${novo}`);
+    }
+  } else if (opc === 2) {
+    await pool.request().input("id", sql.Int, id).input("status", sql.NVarChar, "cancelado").query("UPDATE Pedidos SET status = @status WHERE id = @id");
+    console.log("Pedido cancelado.");
+  }
+  pausar();
 }
 
-/* ------------------ Inicialização ------------------ */
+/* ------------------ inicialização ------------------ */
 
 (async () => {
-  await garantirPastaDados();
-  await carregarClientesCSV();
-  await carregarProdutosCSV();
-  await carregarPedidosCSV();
-
-  console.log('Dados carregados. Produtos:', produtos.length, 'Clientes:', clientes.length, 'Pedidos:', pedidos.length);
-  menu();
+  try {
+    console.clear();
+    console.log("Iniciando sistema e verificando schema...");
+    await ensureSchema();
+    console.log("✅ Schema verificado.");
+    pausar();
+    await menu();
+  } catch (err) {
+    console.error("Erro na inicialização:", err);
+  }
 })();

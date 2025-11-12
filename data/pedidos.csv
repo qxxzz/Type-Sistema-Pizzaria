@@ -1,3 +1,0 @@
-id,clienteId,itensJson,subtotal,taxaEntrega,total,data,pagamento,entrega,status
-1,1,"[{""produtoId"":""1"",""quantidade"":1,""tamanho"":""G"",""bordaId"":null,""adicionaisIds"":[],""precoUnitario"":110,""precoAdicionaisUnit"":0}]",110.00,0.00,110.00,2025-11-11,Pix,Retirada,preparando
-2,2,"[{""produtoId"":""1"",""quantidade"":1,""tamanho"":""G"",""bordaId"":""4"",""adicionaisIds"":[],""precoUnitario"":110,""precoAdicionaisUnit"":30}]",140.00,0.00,140.00,2025-11-11,Pix,Retirada,aberto
