@@ -1,170 +1,401 @@
+# 🍕 Sistema de Pizzaria - Guia Completo de Instalação
 
-# Sistema de Pizzaria em TypeScript
+Sistema completo de gerenciamento de pizzaria com interface web, desenvolvido em TypeScript com React e SQL Server.
 
 João Pedro de Andrade Silva – 2508650
 
 Caio Zanffolim Cunha – 2509832
 
-## 1. Introdução
+## 📋 Pré-requisitos
 
-Este projeto implementa um **Sistema de Pizzaria completo** em **TypeScript**, utilizando **Node.js**.
-Ele oferece funcionalidades essenciais para o gerenciamento de uma pizzaria, como:
-***cadastro de clientes***, ***produtos***, ***pedidos***, ***emissão de comprovantes*** e ***relatórios de vendas***.
+Antes de começar, você precisa ter instalado:
 
-## 2. Pré-requisitos
+- **Node.js** (v16 ou superior) - [Download](https://nodejs.org/)
+- **Docker Desktop** - [Download](https://www.docker.com/products/docker-desktop)
+- **Git** (opcional) - [Download](https://git-scm.com/)
 
-Antes de executar o sistema, é necessário ter instalado em seu computador:
+## 🗄️ Configuração do Banco de Dados
 
-* **Node.js**
-* **VS Code** (ou outro editor de sua preferência)
-* **npm** (gerenciador de pacotes do Node.js)
+### 1. Instalar e Iniciar o SQL Server no Docker
 
-## 3. Tecnologias Utilizadas
-
-* **TypeScript**
-* **Node.js**
-* **CSV**
-* **GitHub**
-
-## 4. Estrutura do Projeto
+Abra o terminal e execute:
 
 ```bash
-├─ data/
-│  ├─ recibos/        # Recibos de pedidos gerados automaticamente
-│  ├─ clientes.csv    # Base de dados dos clientes
-│  ├─ pedidos.csv     # Base de dados dos pedidos
-│  └─ produtos.csv    # Base de dados dos produtos
-├─dist/
-│  └─ index.js
-├─ node_modules/      # Dependências do projeto
-├─ src/
-│  └─ index.ts        # Código principal do sistema
-├─ package.json       # Dependências e scripts do Node.js
-├─ package-lock.json  # Controle de versões das dependências
-├─ tsconfig.json      # Configuração do TypeScript
-└─ README.md          # Manual de utilização e informações do projeto
+docker run -e "ACCEPT_EULA=Y" -e "SA_PASSWORD=P@sswOrd" -p 1433:1433 --name sqlserver -d mcr.microsoft.com/mssql/server:2019-latest
 ```
 
-## 5. Recursos do Sistema
+**Importante:** A senha `P@sswOrd` deve ter:
+- Pelo menos 8 caracteres
+- Letras maiúsculas e minúsculas
+- Números
+- Símbolos especiais
 
-* **Entrada:** nome, telefone, endereço, complemento e forma de pagamento.
-* **Armazenamento:** `data/clientes.csv`, `data/pedidos.csv`, `data/produtos.csv` e arquivos individuais `data/pedido_*.txt`.
-* **Saída:** data, cliente, telefone, endereço, forma de pagamento, total, entrega e itens do pedido.
-* **Relatórios:** vendas, lista de produtos, lista de clientes e histórico de pedidos por cliente.
-* **Funcionalidade adicional:** criação automática de pastas e arquivos na primeira execução.
-
-## 6. Comandos de Instalação
-
-Para instalar e configurar o projeto corretamente, execute os seguintes comandos:
-
----
-
-| Comando | Explicação |
-|---------|------------|
-| `mkdir Type-Sistema-Pizzaria` | Criar pasta |
-| `cd Type-Sistema-Pizzaria` | Entrar na pasta |
-| `mkdir src` | Criar pasta |
-| `mkdir data` | Criar pasta |
-| `cd data` | Entrar na pasta |
-| `touch clientes.csv` | Criar o arquivo `clientes.csv` |
-| `touch pedidos.csv` | Criar o arquivo `pedidos.csv` |
-| `touch produtos.csv` | Criar o arquivo `produtos.csv` |
-| `cd ..` | Sair da pasta |
-| `npm i -g typescript` | Instalar TypeScript |
-| `npx tsc --init` | Criar `tsconfig.json` |
-| `npm i -D typescript ts-node @types/node` | Instale os tipos do Node e ajuste o `tsconfig` na raiz |
-| `cd src` | Criar pasta |
-| `touch index.ts` | Criar o arquivo `index.ts` |
-| `cd ..` | Sair da pasta |
-| `tsc index.ts` | Transpile o `index.ts` para `index.js` |
-
-
-
-## 7. Instalação
-
-Na raiz do projeto, execute:
+### 2. Verificar se o SQL Server está rodando
 
 ```bash
-npm i -D typescript ts-node @types/node
+docker ps
 ```
 
-Crie ou verifique os scripts em `package.json`:
+Deve aparecer o container `sqlserver` com status `Up`.
 
-```json
-{
-  "name": "type-sistema-pizzaria",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "start": "npx ts-node src/index.ts"
+### 3. Para iniciar o container posteriormente
+
+```bash
+docker start sqlserver
+```
+
+## 🚀 Instalação do Backend
+
+### 1. Clone ou baixe o projeto
+
+```bash
+git clone seu-repositorio
+cd Type-Sistema-Pizzaria
+```
+
+### 2. Instale as dependências
+
+```bash
+npm install
+```
+
+Se necessário, instale manualmente:
+
+```bash
+npm install express cors mssql dotenv readline-sync
+npm install --save-dev typescript ts-node @types/node @types/express @types/cors
+```
+
+### 3. Configure o arquivo .env
+
+Crie um arquivo `.env` na raiz do projeto com:
+
+```env
+DB_USER=sa
+DB_PASS=P@sswOrd
+DB_SERVER=localhost
+DB_PORT=1433
+DB_NAME=PizzariaDB
+```
+
+**⚠️ IMPORTANTE:** Use a mesma senha que configurou no Docker!
+
+### 4. Crie o arquivo src/database.ts
+
+```typescript
+import sql from "mssql";
+import dotenv from "dotenv";
+dotenv.config();
+
+export const dbConfig: sql.config = {
+  user: process.env.DB_USER || "sa",
+  password: process.env.DB_PASS || "P@sswOrd",
+  server: process.env.DB_SERVER || "localhost",
+  port: Number(process.env.DB_PORT) || 1433,
+  database: process.env.DB_NAME || "PizzariaDB",
+  options: {
+    encrypt: false,
+    trustServerCertificate: true,
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
-  "devDependencies": {
-    "@types/node": "^24.5.1",
-    "readline-sync": "^1.4.10",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.2"
+};
+
+export async function getConnection() {
+  try {
+    console.log("Conectando ao banco de dados...");
+    const pool = await sql.connect(dbConfig);
+    console.log("✅ Conexão bem-sucedida com o SQL Server!");
+    return pool;
+  } catch (err) {
+    console.error("❌ Erro ao conectar ao banco:", err);
+    throw err;
   }
 }
 ```
 
-Configuração mínima recomendada para `tsconfig.json`:
+### 5. Crie o arquivo src/server.ts
+
+Cole o código completo da API REST fornecido anteriormente.
+
+### 6. Configure o package.json
+
+Adicione os scripts:
 
 ```json
 {
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "CommonJS",
-    "rootDir": "src",
-    "outDir": "dist",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "api": "ts-node src/server.ts"
   }
 }
 ```
 
-## 8. Como executar
+### 7. Crie as tabelas do banco de dados
 
-No terminal, dentro da pasta raiz do projeto:
+Execute o CLI uma vez para criar as tabelas:
 
 ```bash
 npm start
 ```
-OU
+
+Escolha a opção **9 - Sair** após a inicialização.
+
+### 8. Inicie a API
+
 ```bash
-node dist/index.js
+npm run api
 ```
+
+Ou diretamente:
+
+```bash
+npx ts-node src/server.ts
+```
+
+Você deve ver:
+```
+Conectando ao banco de dados...
+✅ Conexão bem-sucedida com o SQL Server!
+🍕 API rodando na porta 3001
+```
+
+**🔥 Deixe este terminal aberto!**
+
+## 🎨 Instalação do Frontend
+
+### 1. Crie o projeto React (em outro terminal)
+
+```bash
+npx create-react-app pizzaria-frontend --template typescript
+cd pizzaria-frontend
+```
+
+### 2. Instale as dependências
+
+```bash
+npm install lucide-react
+npm install -D tailwindcss@3.4.1 postcss autoprefixer
+```
+
+### 3. Configure o Tailwind CSS
+
+Crie o arquivo `tailwind.config.js`:
+
+```js
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./src/**/*.{js,jsx,ts,tsx}",
+  ],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+}
+```
+
+Crie o arquivo `postcss.config.js`:
+
+```js
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+```
+
+### 4. Configure o CSS
+
+Substitua o conteúdo de `src/index.css`:
+
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+```
+
+### 5. Substitua o src/App.tsx
+
+Cole o código completo da interface fornecido anteriormente.
+
+### 6. Limpe arquivos desnecessários
+
+Delete ou esvazie:
+- `src/App.css`
+- `src/logo.svg`
+
+### 7. Inicie o frontend
+
+```bash
+npm start
+```
+
+O navegador deve abrir automaticamente em `http://localhost:3000`
+
+## ✅ Verificação da Instalação
+
+### 1. Teste a API
+
+Abra o navegador e acesse:
+
+```
+http://localhost:3001/api/produtos
+```
+
+Deve retornar `[]` ou uma lista de produtos.
+
+### 2. Teste o Frontend
+
+- **Área do Cliente:** Ver cardápio, adicionar ao carrinho, fazer pedido
+- **Área Admin:** Gerenciar produtos, clientes, pedidos e ver relatórios
+
+## 🐛 Solução de Problemas Comuns
+
+### Erro: "Cannot connect to SQL Server"
+
+**Solução:**
+```bash
+# Verifique se o container está rodando
+docker ps
+
+# Se não estiver, inicie
+docker start sqlserver
+
+# Verifique os logs
+docker logs sqlserver
+```
+
+### Erro: "Login failed for user 'sa'"
+
+**Solução:**
+- Verifique se a senha no `.env` é igual à do Docker
+- A senha deve ter maiúsculas, minúsculas, números e símbolos
+
+### Erro: "Port 3001 already in use"
+
+**Solução:**
+```bash
+# Windows
+netstat -ano | findstr :3001
+taskkill /PID <numero_do_processo> /F
+
+# Linux/Mac
+lsof -ti:3001 | xargs kill -9
+```
+
+### Erro: "Tailwind CSS not working"
+
+**Solução:**
+```bash
+cd pizzaria-frontend
+rm -rf node_modules
+npm install
+npm start
+```
+
+### API retorna erro 500
+
+**Solução:**
+1. Verifique se as tabelas foram criadas:
+   ```bash
+   npm start  # Execute o CLI uma vez
+   ```
+2. Verifique a conexão do banco no terminal da API
+3. Veja os logs de erro detalhados
+
+## 📁 Estrutura do Projeto
+
+```
+Type-Sistema-Pizzaria/
+├── src/
+│   ├── index.ts          # CLI original
+│   ├── server.ts         # API REST
+│   └── database.ts       # Configuração do banco
+├── pizzaria-frontend/
+│   ├── src/
+│   │   ├── App.tsx       # Interface React
+│   │   └── index.css     # Estilos Tailwind
+│   ├── tailwind.config.js
+│   └── postcss.config.js
+├── .env                  # Configurações do banco
+└── package.json
+```
+
+## 🎯 Como Usar
+
+### Executar o Sistema
+
+**Terminal 1 - Backend:**
+```bash
+cd Type-Sistema-Pizzaria
+npm run api
+```
+
+**Terminal 2 - Frontend:**
+```bash
+cd Type-Sistema-Pizzaria/pizzaria-frontend
+npm start
+```
+
+### Acessar o Sistema
+
+- **Frontend:** http://localhost:3000
+- **API:** http://localhost:3001/api
+
+## 🔄 Comandos Úteis
+
+```bash
+# Parar todos os containers Docker
+docker stop $(docker ps -q)
+
+# Iniciar o SQL Server
+docker start sqlserver
+
+# Ver logs do SQL Server
+docker logs sqlserver
+
+# Limpar cache do npm
+npm cache clean --force
+
+# Reinstalar dependências
+rm -rf node_modules && npm install
+```
+
+## 📊 Estrutura do Banco de Dados
+
+O sistema cria automaticamente estas tabelas:
+
+- **Clientes:** id, nome, telefone, cep, endereco, complemento
+- **Produtos:** id, nome, tipo, preco
+- **PizzaPrecos:** produtoId, precoP, precoM, precoG
+- **Pedidos:** id, clienteId, total, data, pagamento, entrega, status
+- **PedidoItens:** id, pedidoId, produtoId, quantidade, tamanho
+
+## 🛡️ Segurança (Para Produção)
+
+⚠️ Este projeto é para desenvolvimento. Para produção, adicione:
+
+- Autenticação JWT
+- Validação de dados (express-validator)
+- Rate limiting
+- HTTPS
+- Variáveis de ambiente seguras
+- Hash de senhas
+- Sanitização de inputs
+
+## 📞 Suporte
+
+Se encontrar problemas:
+
+1. Verifique os logs do backend (terminal 1)
+2. Abra o Console do navegador (F12)
+3. Teste a API diretamente no navegador
+4. Verifique se o Docker está rodando
+
+## 📝 Licença
+
+MIT
+
 ---
 
-## 9. Build para Produção
-
-Para gerar os arquivos JavaScript prontos para execução sem o `ts-node`:
-
-```bash
-npx tsc
-```
-
-Isso criará os arquivos compilados na pasta `dist/`.
-
-Em seguida, você pode executar diretamente com o Node:
-
-```bash
-node dist/index.js
-```
-
-## 10. Diagrama 1 do projeto
-
-<img width="1760" height="1360" alt="image" src="https://github.com/user-attachments/assets/e10ada99-537c-4dbb-8ac4-0b6e111f984b" />
-
-## 10. Diagrama 2 do projeto
-
-<img width="1760" height="1360" alt="image" src="https://github.com/user-attachments/assets/beeb61b5-64c3-448d-af15-cfe95060024e" />
-
-
-
-
- 
+**Desenvolvido com ❤️ para sua pizzaria!** 🍕
