@@ -3,7 +3,7 @@
 **Autores:**
 
 * João Pedro de Andrade Silva – 2508650
-* Caio Zanffolim Cunha – 2509832
+* Caio Zanfollim Cunha – 2509832
 
 Este projeto implementa um **sistema completo de gerenciamento de pizzaria**, desenvolvido inicialmente em **TypeScript** com armazenamento em CSV e evoluído para uma solução **full-stack** com:
 
