@@ -264,11 +264,11 @@ npm run build
 
 ## Diagrama 1
 
-*https://cdn.discordapp.com/attachments/841650196974272549/1442958940030767177/Fluxograma_2.png?ex=692753bc&is=6926023c&hm=9158007f1ad9d4566a4586af1c98adf788da8d1e0d2bc8039399ee69448b4f34&*
+*<img width="1760" height="1360" alt="image" src="https://github.com/user-attachments/assets/5a2733a9-beb6-4b77-b4f2-1fece3fcb183" />*
 
 ## Diagrama 2
 
-*https://cdn.discordapp.com/attachments/841650196974272549/1442958940546797678/Fluxograma_Estrutura_.png?ex=692753bc&is=6926023c&hm=22b82c4a16d978462e5b7b9ebed6dd9d1aaa02565106060178dbfa9db138a5b3&*
+*<img width="1228" height="1454" alt="image" src="https://github.com/user-attachments/assets/0711d058-0705-461f-a772-f0ea0ecedc11" />*
 
 ---
 
