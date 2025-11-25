@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Pizza, Users, Package, ShoppingCart, BarChart3, Clock, Trash2, Plus, Minus, X, Eye, ChevronDown, ChevronUp } from 'lucide-react';
+import { Pizza, Users, Package, ShoppingCart, BarChart3, Clock, Trash2, Plus, Minus, X, Eye, ChevronDown, ChevronUp, FileText, Download } from 'lucide-react';
 
 const API_URL = 'http://localhost:3001/api';
 
@@ -84,6 +84,7 @@ export default function PizzariaSystem() {
   const [modalPizza, setModalPizza] = useState<{aberto: boolean, pizza: Produto | null}>({aberto: false, pizza: null});
   const [pedidoExpandido, setPedidoExpandido] = useState<number | null>(null);
   const [detalhesPedido, setDetalhesPedido] = useState<DetalhesPedido | null>(null);
+  const [pedidoFinalizado, setPedidoFinalizado] = useState<DetalhesPedido | null>(null);
 
   useEffect(() => {
     carregarProdutos();
@@ -136,6 +137,93 @@ export default function PizzariaSystem() {
       console.error('Erro ao carregar detalhes:', err);
       alert('Erro ao carregar detalhes do pedido');
     }
+  };
+
+  const gerarComprovanteTXT = (pedido: DetalhesPedido) => {
+    const linha = (char: string, qtd: number = 50) => char.repeat(qtd);
+    const centralizar = (texto: string, largura: number = 50) => {
+      const espacos = Math.max(0, Math.floor((largura - texto.length) / 2));
+      return ' '.repeat(espacos) + texto;
+    };
+
+    let txt = '';
+    txt += linha('=') + '\n';
+    txt += centralizar('🍕 PIZZARIA SISTEMA 🍕') + '\n';
+    txt += linha('=') + '\n';
+    txt += 'Endereço: Rua das Pizzas, 123 - Centro\n';
+    txt += 'Telefone: (11) 98765-4321\n';
+    txt += 'CNPJ: 12.345.678/0001-90\n';
+    txt += linha('-') + '\n\n';
+
+    txt += `COMPROVANTE DE PEDIDO #${pedido.id}\n`;
+    txt += `Data: ${new Date(pedido.data).toLocaleString('pt-BR')}\n`;
+    txt += linha('-') + '\n\n';
+
+    txt += 'DADOS DO CLIENTE:\n';
+    txt += `Nome: ${pedido.clienteNome}\n`;
+    txt += `Telefone: ${pedido.telefone}\n`;
+    txt += `Endereço: ${pedido.endereco}\n`;
+    if (pedido.complemento) {
+      txt += `Complemento: ${pedido.complemento}\n`;
+    }
+    txt += linha('-') + '\n\n';
+
+    txt += 'ITENS DO PEDIDO:\n\n';
+    let subtotal = 0;
+    pedido.itens.forEach((item, idx) => {
+      const precoItem = Number(item.preco);
+      const totalItem = precoItem * item.quantidade;
+      subtotal += totalItem;
+      
+      txt += `${idx + 1}. ${item.produtoNome}`;
+      if (item.tamanho) txt += ` (${item.tamanho})`;
+      txt += '\n';
+      txt += `   Qtd: ${item.quantidade}x | Unitário: R$ ${precoItem.toFixed(2)}\n`;
+      txt += `   Subtotal: R$ ${totalItem.toFixed(2)}\n\n`;
+    });
+
+    txt += linha('-') + '\n';
+    txt += `SUBTOTAL: R$ ${subtotal.toFixed(2)}\n`;
+    txt += `TOTAL: R$ ${Number(pedido.total).toFixed(2)}\n`;
+    txt += linha('-') + '\n\n';
+
+    txt += `FORMA DE PAGAMENTO: ${pedido.pagamento}\n`;
+    txt += `TIPO DE ENTREGA: ${pedido.entrega}\n`;
+    txt += `STATUS: ${pedido.status.toUpperCase()}\n`;
+
+    if (pedido.entrega === 'Entrega') {
+      txt += '\n' + linha('=') + '\n';
+      txt += centralizar('📍 INFORMAÇÕES PARA ENTREGA 📍') + '\n';
+      txt += linha('=') + '\n';
+      txt += `Cliente: ${pedido.clienteNome}\n`;
+      txt += `Telefone: ${pedido.telefone}\n`;
+      txt += `Endereço: ${pedido.endereco}\n`;
+      if (pedido.complemento) {
+        txt += `Complemento: ${pedido.complemento}\n`;
+      }
+      txt += `\nValor a cobrar: R$ ${Number(pedido.total).toFixed(2)}\n`;
+      txt += `Forma de pagamento: ${pedido.pagamento}\n`;
+      txt += linha('=') + '\n';
+    }
+
+    txt += '\n' + centralizar('Obrigado pela preferência!') + '\n';
+    txt += centralizar('Volte sempre! 🍕❤️') + '\n';
+    txt += linha('=') + '\n';
+
+    return txt;
+  };
+
+  const baixarComprovante = (pedido: DetalhesPedido) => {
+    const conteudo = gerarComprovanteTXT(pedido);
+    const blob = new Blob([conteudo], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `comprovante-pedido-${pedido.id}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const ModalPersonalizarPizza = () => {
@@ -452,7 +540,11 @@ export default function PizzariaSystem() {
         });
         
         if (resPedido.ok) {
-          alert('Pedido realizado com sucesso!');
+          const pedidoCriado = await resPedido.json();
+          // Carregar detalhes completos do pedido
+          const resDetalhes = await fetch(`${API_URL}/pedidos/${pedidoCriado.id}`);
+          const detalhes = await resDetalhes.json();
+          setPedidoFinalizado(detalhes);
           setCarrinho([]);
           setFormCliente({ nome: '', telefone: '', cep: '', endereco: '', complemento: '' });
         }
@@ -587,6 +679,44 @@ export default function PizzariaSystem() {
             Finalizar Pedido - R$ {total.toFixed(2)}
           </button>
         </div>
+
+        {pedidoFinalizado && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-md w-full p-6">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Pedido Realizado!</h2>
+                <p className="text-gray-600">Pedido #{pedidoFinalizado.id} confirmado com sucesso</p>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <p className="text-sm text-gray-600 mb-2">Total do pedido:</p>
+                <p className="text-3xl font-bold text-green-600">R$ {Number(pedidoFinalizado.total).toFixed(2)}</p>
+              </div>
+
+              <button
+                onClick={() => {
+                  baixarComprovante(pedidoFinalizado);
+                }}
+                className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2 mb-3"
+              >
+                <Download size={20} />
+                Baixar Comprovante (.txt)
+              </button>
+
+              <button
+                onClick={() => setPedidoFinalizado(null)}
+                className="w-full bg-gray-200 text-gray-700 py-3 rounded-lg font-bold hover:bg-gray-300 transition"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -652,8 +782,7 @@ export default function PizzariaSystem() {
             />
             <input 
               placeholder="Complemento (opcional)" 
-              className="border-2 border-cyan-300 rounded-lg px-4 py-3 focus:border-cyan-500 focus:outline
-              -none bg-white md:col-span-2" 
+              className="border-2 border-cyan-300 rounded-lg px-4 py-3 focus:border-cyan-500 focus:outline-none bg-white md:col-span-2" 
               value={form.complemento} 
               onChange={e => setForm({...form, complemento: e.target.value})} 
             />
@@ -884,6 +1013,18 @@ export default function PizzariaSystem() {
                 </div>
                 
                 <div className="flex gap-2 flex-wrap mb-4">
+                  <button 
+                    onClick={async () => {
+                      const res = await fetch(`${API_URL}/pedidos/${p.id}`);
+                      const detalhes = await res.json();
+                      baixarComprovante(detalhes);
+                    }}
+                    className="bg-gradient-to-r from-teal-500 to-cyan-500 text-white px-4 py-2 rounded-lg hover:from-teal-600 hover:to-cyan-600 font-semibold flex items-center gap-2 shadow-md transition"
+                  >
+                    <FileText size={18} />
+                    Comprovante
+                  </button>
+
                   <button 
                     onClick={() => toggleDetalhes(p.id)}
                     className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-4 py-2 rounded-lg hover:from-indigo-600 hover:to-purple-600 font-semibold flex items-center gap-2 shadow-md transition"
