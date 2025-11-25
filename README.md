@@ -264,11 +264,11 @@ npm run build
 
 ## Diagrama 1
 
-*(imagem incluída no repositório)*
+*<img width="1760" height="1360" alt="image" src="https://github.com/user-attachments/assets/5a2733a9-beb6-4b77-b4f2-1fece3fcb183" />*
 
 ## Diagrama 2
 
-*(imagem incluída no repositório)*
+*<img width="1228" height="1454" alt="image" src="https://github.com/user-attachments/assets/0711d058-0705-461f-a772-f0ea0ecedc11" />*
 
 ---
 
