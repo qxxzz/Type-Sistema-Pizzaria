@@ -29,8 +29,6 @@ Este projeto implementa um **sistema completo de gerenciamento de pizzaria**, de
 11. [Diagrama do Projeto](#diagramas-do-projeto)
 12. [Solução de Problemas](#solução-de-problemas)
 13. [Estrutura do Banco](#estrutura-do-banco-de-dados)
-14. [Segurança](#segurança)
-15. [Licença](#licença)
 
 ---
 
@@ -195,7 +193,7 @@ npm install --save-dev @types/express @types/cors
 ## 4. Iniciar API
 
 ```bash
-npm run api
+npm start
 ```
 
 ---
@@ -228,7 +226,7 @@ npm start
 ### Terminal 1 — API
 
 ```bash
-npm run api
+npm start
 ```
 
 ### Terminal 2 — Frontend
@@ -312,20 +310,3 @@ Tabelas criadas:
 
 ---
 
-# 14. Segurança
-
-Para uso real:
-
-* JWT
-* Validação de input
-* HTTPS
-* Rate limiting
-* Variáveis de ambiente seguras
-
----
-
-# 15. Licença
-
-**MIT**
-
----
