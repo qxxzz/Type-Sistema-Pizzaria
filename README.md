@@ -2,7 +2,12 @@
 
 Sistema completo de gerenciamento de pizzaria com interface web, desenvolvido em TypeScript com React e SQL Server.
 
+<<<<<<< HEAD
 João Pedro de Andrade Silva – 2508650
+=======
+* João Pedro de Andrade Silva – 2508650
+* Caio Zanfollim Cunha – 2509832
+>>>>>>> cb9b29d2ac5873faee8f9224fadde8d7cae68af6
 
 Caio Zanffolim Cunha – 2509832
 
@@ -14,7 +19,23 @@ Antes de começar, você precisa ter instalado:
 - **Docker Desktop** - [Download](https://www.docker.com/products/docker-desktop)
 - **Git** (opcional) - [Download](https://git-scm.com/)
 
+<<<<<<< HEAD
 ## 🗄️ Configuração do Banco de Dados
+=======
+1. [Introdução](#introdução)
+2. [Pré-requisitos](#pré-requisitos)
+3. [Tecnologias Utilizadas](#tecnologias-utilizadas)
+4. [Evolução do Projeto](#evolução-do-projeto)
+5. [Estrutura do Projeto](#estrutura-do-projeto)
+6. [Instalação – Backend CLI (CSV)](#instalação--backend-cli-csv)
+7. [Instalação – Backend API (SQL Server)](#instalação--backend-api-sql-server)
+8. [Instalação – Frontend React](#instalação--frontend-react)
+9. [Como Executar o Sistema](#como-executar-o-sistema)
+10. [Build para Produção](#build-para-produção)
+11. [Diagrama do Projeto](#diagramas-do-projeto)
+12. [Solução de Problemas](#solução-de-problemas)
+13. [Estrutura do Banco](#estrutura-do-banco-de-dados)
+>>>>>>> cb9b29d2ac5873faee8f9224fadde8d7cae68af6
 
 ### 1. Instalar e Iniciar o SQL Server no Docker
 
@@ -142,7 +163,7 @@ Escolha a opção **9 - Sair** após a inicialização.
 ### 8. Inicie a API
 
 ```bash
-npm run api
+npm start
 ```
 
 Ou diretamente:
@@ -236,6 +257,7 @@ O navegador deve abrir automaticamente em `http://localhost:3000`
 
 ### 1. Teste a API
 
+<<<<<<< HEAD
 Abra o navegador e acesse:
 
 ```
@@ -243,6 +265,58 @@ http://localhost:3001/api/produtos
 ```
 
 Deve retornar `[]` ou uma lista de produtos.
+=======
+```bash
+npm start
+```
+
+### Terminal 2 — Frontend
+
+```bash
+cd pizzaria-frontend
+npm start
+```
+
+### Acessar
+
+* **Frontend:** [http://localhost:3000](http://localhost:3000)
+* **API:** [http://localhost:3001/api](http://localhost:3001/api)
+* **Banco:** localhost:1433
+
+---
+
+# 10. Build para Produção
+
+### Compilar TypeScript
+
+```bash
+npx tsc
+```
+
+### Build do frontend
+
+```bash
+npm run build
+```
+
+---
+
+# 11. Diagramas do Projeto
+
+## Diagrama 1
+
+*<img width="1760" height="1360" alt="image" src="https://github.com/user-attachments/assets/5a2733a9-beb6-4b77-b4f2-1fece3fcb183" />*
+
+## Diagrama 2
+
+*<img width="1228" height="1454" alt="image" src="https://github.com/user-attachments/assets/0711d058-0705-461f-a772-f0ea0ecedc11" />*
+
+---
+
+# 12. Solução de Problemas
+
+### SQL Server não conecta
+>>>>>>> cb9b29d2ac5873faee8f9224fadde8d7cae68af6
 
 ### 2. Teste o Frontend
 
@@ -398,4 +472,7 @@ MIT
 
 ---
 
+<<<<<<< HEAD
 **Desenvolvido com ❤️ para sua pizzaria!** 🍕
+=======
+>>>>>>> cb9b29d2ac5873faee8f9224fadde8d7cae68af6
